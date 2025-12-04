@@ -3,94 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>本地教务管理系统 (稳定版)</title>
+    <title>Veape Studio Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            text: '#f8fafc',
+                            muted: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- 核心库：使用 Cloudflare CDN 确保稳定性 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
     
+    <!-- LeanCloud SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
+
+    <script>
+        // --- [配置区域] ---
+        const LC_CONFIG = {
+            appId: "yiH4miM1mv1Wd3gR5qknSDLQ-gzGzoHsz",
+            appKey: "S1hUg6WIYZqWNSf10el4ECzd",
+            serverURL: "https://yih4mim1.lc-cn-n1-shared.com" 
+        };
+        
+        // 初始化 LeanCloud
+        window.initLeanCloud = function() {
+            if (typeof AV === 'undefined') return false;
+            if (LC_CONFIG.appId === "请替换为您的AppID") return false;
+            
+            let safeURL = LC_CONFIG.serverURL.trim();
+            safeURL = safeURL.replace(/https?:\/\//g, "").replace(/\/+$/, "");
+            safeURL = "https://" + safeURL;
+
+            try {
+                AV.init({ appId: LC_CONFIG.appId, appKey: LC_CONFIG.appKey, serverURL: safeURL });
+                console.log("LeanCloud initialized");
+                return true;
+            } catch (e) {
+                console.error("LeanCloud init error:", e);
+                return false;
+            }
+        };
+
+        window.isLCReady = false;
+        window.addEventListener('load', () => { window.isLCReady = window.initLeanCloud(); });
+    </script>
+
     <style>
-        body { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Nunito', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #334155;
+            overflow: hidden;
+        }
+        
+        html.dark body {
+            background: linear-gradient(-45deg, #020617, #1e1b4b, #312e81, #0f172a);
+            background-size: 400% 400%;
+            color: #e2e8f0;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 动态流体背景 */
+        .blob-cont {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        .blob {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
+            animation: floatBlob 20s infinite ease-in-out alternate;
+        }
+        html.dark .blob { opacity: 0.2; }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #bfdbfe; animation-delay: 0s; }
+        .blob-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vw; background: #e9d5ff; animation-delay: -5s; }
+        .blob-3 { top: 40%; left: 40%; width: 40vw; height: 40vw; background: #fed7aa; animation-delay: -10s; }
+        html.dark .blob-1 { background: #1e3a8a; }
+        html.dark .blob-2 { background: #581c87; }
+        html.dark .blob-3 { background: #7c2d12; }
+
+        @keyframes floatBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 50px) scale(1.1); }
+        }
+
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        /* 适配 iPhone 底部安全区 */
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+        html.dark ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        html.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+        
         .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
         
-        @keyframes slide-down {
-            from { transform: translateY(-100%) translateX(-50%); opacity: 0; }
-            to { transform: translateY(0) translateX(-50%); opacity: 1; }
+        /* 动画 */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 70% { transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        
+        .animate-enter { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .animate-pop { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; }
+        
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 0.5rem;
         }
-        .toast-enter { animation: slide-down 0.3s ease-out forwards; }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scale-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .modal-overlay { animation: fade-in 0.2s ease-out forwards; }
-        .modal-content { animation: scale-in 0.2s ease-out forwards; }
+        html.dark .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+        }
+        
+        .hover-lift { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .hover-lift:hover { transform: translateY(-4px); }
+        
+        /* 磨砂玻璃 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        html.dark .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        html.dark .glass-sidebar {
+            background: rgba(15, 23, 42, 0.8);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .tilt-card { transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+        .logo-glow { animation: breathe-glow 3s infinite ease-in-out; }
+        @keyframes breathe-glow { 0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } }
+
+        .spinner { border: 3px solid rgba(59, 130, 246, 0.3); border-radius: 50%; border-top: 3px solid #3b82f6; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-overlay { animation: fadeInUp 0.2s ease-out forwards; backdrop-filter: blur(4px); background: rgba(0,0,0,0.2); }
     </style>
 </head>
-<body class="bg-gray-50 text-sm md:text-base text-gray-800 select-none md:select-text">
-    <div id="root"></div>
+<body class="h-screen overflow-hidden selection:bg-indigo-200 selection:text-indigo-900 dark:selection:bg-indigo-500 dark:selection:text-white">
+    <div class="blob-cont"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+    <div id="root" class="h-full relative z-10"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useContext, createContext, useCallback } = React;
 
-        // --- 全局常量: 主题配置 ---
+        // --- 全局变量定义 (必须放在最前) ---
         const THEMES = [
-            { id: 'blue', name: '经典蓝', primary: 'blue', sidebar: 'slate' },
-            { id: 'emerald', name: '森系绿', primary: 'emerald', sidebar: 'zinc' },
-            { id: 'violet', name: '罗兰紫', primary: 'violet', sidebar: 'neutral' },
-            { id: 'rose', name: '玫瑰红', primary: 'rose', sidebar: 'stone' },
-            { id: 'amber', name: '活力橙', primary: 'orange', sidebar: 'stone' },
-            { id: 'cyan', name: '碧海蓝', primary: 'cyan', sidebar: 'slate' },
-            { id: 'fuchsia', name: '幻影紫', primary: 'fuchsia', sidebar: 'neutral' },
-            { id: 'teal', name: '松石绿', primary: 'teal', sidebar: 'zinc' },
-            { id: 'indigo', name: '星空蓝', primary: 'indigo', sidebar: 'slate' },
+            { id: 'blue', name: '极光蓝', primary: 'blue', accent: 'cyan' },
+            { id: 'rose', name: '樱花粉', primary: 'rose', accent: 'pink' },
+            { id: 'violet', name: '星云紫', primary: 'violet', accent: 'fuchsia' },
+            { id: 'emerald', name: '森林绿', primary: 'emerald', accent: 'lime' },
+            { id: 'dark', name: '深邃黑', primary: 'slate', accent: 'indigo', isDark: true },
         ];
+        const AVATARS = ["🦁", "🐱", "🐼", "🦊", "🐨", "🐯", "🐮", "🐷", "🐸", "🐙", "🦄", "🎓", "👩‍🏫", "👨‍🏫", "🚀", "⭐"];
+        const DEFAULT_QUOTES = ["今天也是元气满满的一天！✨", "教育的本质是唤醒。🌱", "种一棵树最好的时间是十年前，其次是现在。🌲", "星光不问赶路人。⭐"];
+
+        // --- Context ---
+        const AppDataContext = createContext(null);
+        const ToastContext = createContext(null);
 
         // --- 基础设施组件 ---
-
-        // 1. Toast 提示上下文
-        const ToastContext = createContext(null);
         const ToastProvider = ({ children }) => {
             const [toasts, setToasts] = useState([]);
-            
-            const addToast = useCallback((msg, type = 'info') => {
-                const id = Date.now();
-                setToasts(prev => [...prev, { id, msg, type }]);
-                setTimeout(() => removeToast(id), 3000);
-            }, []);
-
-            const removeToast = (id) => {
-                setToasts(prev => prev.filter(t => t.id !== id));
-            };
-
-            return (
-                <ToastContext.Provider value={addToast}>
-                    {children}
-                    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
-                        {toasts.map(t => (
-                            <div key={t.id} className={`toast-enter pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium flex items-center justify-between ${t.type === 'error' ? 'bg-red-500' : t.type === 'success' ? 'bg-green-600' : 'bg-gray-800'}`}>
-                                <span>{t.msg}</span>
-                                <button onClick={() => removeToast(t.id)} className="ml-4 opacity-75 hover:opacity-100">✕</button>
-                            </div>
-                        ))}
-                    </div>
-                </ToastContext.Provider>
-            );
+            const addToast = useCallback((msg, type = 'info') => { const id = Date.now(); setToasts(p => [...p, { id, msg, type }]); setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3000); }, []);
+            return (<ToastContext.Provider value={addToast}>{children}<div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 w-auto min-w-[300px]">{toasts.map(t => (<div key={t.id} className={`animate-enter px-6 py-3 rounded-2xl shadow-2xl flex items-center justify-between backdrop-blur-xl border border-white/20 dark:border-white/10 text-sm font-bold ${t.type === 'error' ? 'bg-red-500/80 text-white' : t.type === 'success' ? 'bg-emerald-500/80 text-white' : 'bg-white/80 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100'}`}><span>{t.type==='success'?'🎉 ':t.type==='error'?'⚠️ ':'💡 '} {t.msg}</span></div>))}</div></ToastContext.Provider>);
         };
-        const useToast = () => {
-            const context = useContext(ToastContext);
-            if (!context) return () => {}; 
-            return context;
-        };
+        const useToast = () => useContext(ToastContext) || (() => {});
+        const useAppData = () => useContext(AppDataContext);
 
-        // 2. 图标组件
-        const Icon = ({ path, size = 20, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
-        );
-        
+        // Icons
+        const Icon = ({ path, size = 20, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>);
         const icons = {
+            Home: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
             Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
             Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
             PhoneCall: <><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>,
@@ -104,64 +218,944 @@
             ChevronRight: <><polyline points="9 18 15 12 9 6"/></>,
             Clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
             UserCheck: <><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></>,
-            UserX: <><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></>,
             AlertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>,
             Layers: <><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></>,
             Palette: <><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.01 17.461 2 12 2z"/></>,
             TrendingUp: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>,
-            TrendingDown: <><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></>,
-            Sliders: <><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></>,
             Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
             Search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
+            Cloud: <><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></>,
+            RefreshCw: <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>,
+            Database: <><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></>,
+            UploadCloud: <><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></>,
+            UserX: <><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></>,
+            PieChart: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
+            Activity: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>,
+            Award: <><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>,
+            Coins: <><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="M17 17v.01"/></>,
+            Wallet: <><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></>,
+            Settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+            Sparkles: <><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></>,
+            Sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
+            Moon: <><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></>,
+            CloudSun: <><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></>,
+            Coffee: <><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>,
+            Quote: <><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></>
         };
-
-        const LucideIcon = ({ name, size = 20, className }) => {
-            const path = icons[name];
-            return <Icon path={path || icons.Users} size={size} className={className} />;
-        };
-
-        // 3. 模态框组件 (点击遮罩关闭)
+        const LucideIcon = ({ name, size = 20, className }) => <Icon path={icons[name] || icons.Users} size={size} className={className} />;
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
-                <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 safe-area-pb modal-overlay"
-                    onClick={onClose} 
-                >
-                    <div 
-                        className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto modal-content flex flex-col"
-                        onClick={(e) => e.stopPropagation()} 
-                    >
-                        <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10 shrink-0">
-                            <h3 className="text-lg font-bold text-gray-800 truncate pr-4">{title}</h3>
-                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                                <LucideIcon name="X" size={24} />
-                            </button>
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4 safe-area-pb modal-overlay" onClick={onClose}>
+                    <div className="bg-white/90 dark:bg-slate-800/95 backdrop-blur-md rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto modal-content flex flex-col transform transition-all border border-white/50 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center p-5 border-b border-gray-100/50 dark:border-slate-700 sticky top-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur z-10 shrink-0">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white truncate pr-4 tracking-tight flex items-center gap-2">
+                                <span className="w-1 h-6 bg-blue-500 rounded-full"></span>{title}
+                            </h3>
+                            <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white p-2 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 transition-colors"><LucideIcon name="X" size={24} /></button>
                         </div>
-                        <div className="p-4">{children}</div>
+                        <div className="p-6 dark:text-slate-200">{children}</div>
                     </div>
                 </div>
             );
         };
 
-        // --- 核心业务逻辑组件 ---
+        // 3D Tilt Card Component
+        const TiltCard = ({ children, className = "" }) => {
+            const ref = useRef(null);
+            const [transform, setTransform] = useState("perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)");
+            const handleMouseMove = (e) => {
+                if (!ref.current) return;
+                const { left, top, width, height } = ref.current.getBoundingClientRect();
+                const x = (e.clientX - left) / width;
+                const y = (e.clientY - top) / height;
+                const tiltX = (0.5 - y) * 5; 
+                const tiltY = (x - 0.5) * 5;
+                setTransform(`perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`);
+            };
+            const handleMouseLeave = () => setTransform("perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)");
+            return <div ref={ref} className={`tilt-card ${className}`} style={{ transform }} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>{children}</div>;
+        };
+
+        const Skeleton = ({ className }) => <div className={`skeleton ${className}`}></div>;
+
+        // --- 业务组件 ---
+        
+        const SettingsManager = () => {
+            const { 
+                teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, theme, 
+                students, courses, classGroups, followUps, formatDate, fetchAll, avatar, setAvatar,
+                quotes, setQuotes // 获取语录相关状态
+            } = useAppData();
+            const addToast = useToast();
+            const [importing, setImporting] = useState(false);
+            const [newQuote, setNewQuote] = useState(""); // 新语录输入状态
+
+            const handleSave = () => {
+                // 保存语录到 localStorage (和 useEffect 中的逻辑一致，这里为了反馈)
+                localStorage.setItem('lms_quotes', JSON.stringify(quotes));
+                addToast("设置已保存", "success");
+            }
+            
+            // 添加新语录
+            const handleAddQuote = () => {
+                if (!newQuote.trim()) return addToast("内容不能为空", "error");
+                setQuotes([...quotes, newQuote.trim()]);
+                setNewQuote("");
+                addToast("语录已添加", "success");
+            };
+
+            // 删除语录
+            const handleDeleteQuote = (index) => {
+                if(confirm("确定删除这条语录吗？")) {
+                    const newQuotes = [...quotes];
+                    newQuotes.splice(index, 1);
+                    setQuotes(newQuotes);
+                }
+            };
+
+            // 备份逻辑
+            const handleExport = () => {
+                const backupData = {
+                    version: "1.0",
+                    timestamp: new Date().toISOString(),
+                    students, courses, classGroups, followUps, quotes // 导出时包含语录
+                };
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `veape_backup_${formatDate(new Date())}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                addToast("备份文件已下载", "success");
+            };
+
+            const handleImport = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if(!data.students || !data.classGroups) throw new Error("无效的备份文件");
+                        
+                        addToast("开始恢复数据...", "info");
+                        
+                        // 辅助恢复函数 (同之前)
+                        const restoreItem = async (className, item) => {
+                            const { id, createdAt, updatedAt, objectId, ...payload } = item;
+                            try {
+                                const obj = AV.Object.createWithoutData(className, id);
+                                Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, payload[k]); });
+                                await obj.save();
+                            } catch (err) {
+                                const NewObj = AV.Object.extend(className);
+                                const newObj = new NewObj();
+                                Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; newObj.set(k, payload[k]); });
+                                await newObj.save();
+                            }
+                        };
+
+                        // 串行恢复防止并发过高
+                        for (const s of data.students) await restoreItem('Student', s);
+                        for (const g of data.classGroups) await restoreItem('ClassGroup', g);
+                        for (const c of data.courses) await restoreItem('Course', c);
+                        for (const f of data.followUps) await restoreItem('FollowUp', f);
+                        
+                        // 恢复语录
+                        if (data.quotes && Array.isArray(data.quotes)) {
+                            setQuotes(data.quotes);
+                        }
+
+                        await fetchAll();
+                        addToast("数据恢复完成！", "success");
+                    } catch (err) {
+                        console.error(err);
+                        addToast("恢复失败: " + err.message, "error");
+                    } finally {
+                        e.target.value = ''; 
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            return (
+                <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-6xl mx-auto">
+                    <div className="flex justify-between items-end mb-2">
+                        <div>
+                            <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">
+                                <LucideIcon name="Settings" size={32} className={`text-${theme.primary}-500 animate-spin-slow`}/> 
+                                系统设置
+                            </h2>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">个性化配置您的工作台</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* 卡片 1: 基础设置 */}
+                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-2xl bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center shadow-inner`}><LucideIcon name="Settings" size={22}/></div>
+                                常规选项
+                            </h3>
+                            <div className="space-y-8 flex-1">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">选择头像</label>
+                                    <div className="flex flex-wrap gap-3">
+                                        {AVATARS.map(emoji => (
+                                            <button key={emoji} onClick={()=>setAvatar(emoji)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all ${avatar===emoji ? `bg-${theme.primary}-100 ring-2 ring-${theme.primary}-500 scale-110` : 'bg-white/50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600'}`}>
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">教师评级</label>
+                                    <input className="w-full border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all text-slate-700 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={teacherLevel} onChange={e=>setTeacherLevel(e.target.value)} placeholder="例如：初级 2 级" />
+                                    <p className="text-xs text-slate-400 mt-2 flex items-center gap-1"><LucideIcon name="Award" size={12}/> 显示在仪表盘上的职级信息</p>
+                                </div>
+                                <div className="pt-6 border-t border-slate-100 dark:border-slate-700">
+                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wider">课时费基数 (元/课时)</label>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-200 font-bold text-2xl shadow-sm border border-slate-100 dark:border-slate-600">¥</div>
+                                        <input type="number" className="flex-1 border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all font-mono font-bold text-2xl text-slate-800 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={classFeeBase} onChange={e=>setClassFeeBase(Number(e.target.value))} />
+                                    </div>
+                                    <div className="bg-orange-50/80 dark:bg-orange-900/20 p-4 rounded-2xl mt-4 text-xs text-orange-700/90 dark:text-orange-300 leading-relaxed border border-orange-100/50 dark:border-orange-800/30 flex gap-3">
+                                        <LucideIcon name="Activity" size={16} className="shrink-0 mt-0.5"/>
+                                        <div>
+                                            <span className="font-bold block mb-1">当前计算公式:</span>
+                                            (累计课时 ÷ 2) × 1.5 × <span className="font-bold text-orange-600 dark:text-orange-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800 mx-1 shadow-sm">{classFeeBase}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-8 mt-auto">
+                                <button onClick={handleSave} className={`w-full bg-${theme.primary}-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-600 hover:scale-[1.02] active:scale-95 transition-all hover-jelly`}>保存所有设置</button>
+                            </div>
+                        </TiltCard>
+
+                        {/* 卡片 2: 个性化语录管理 (新增) */}
+                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center shadow-inner`}><LucideIcon name="Quote" size={22}/></div>
+                                个性化语录
+                            </h3>
+                            <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
+                                {quotes.map((q, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 group">
+                                        <div className="flex-1 bg-white/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 shadow-sm">
+                                            {q}
+                                        </div>
+                                        <button onClick={() => handleDeleteQuote(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                            <LucideIcon name="Trash2" size={16}/>
+                                        </button>
+                                    </div>
+                                ))}
+                                {quotes.length === 0 && <div className="text-center text-slate-400 text-sm py-4">暂无语录，请添加一条吧~</div>}
+                            </div>
+                            <div className="pt-6 mt-auto border-t border-slate-100 dark:border-slate-700">
+                                <div className="flex gap-2">
+                                    <input 
+                                        className="flex-1 border border-slate-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none transition-all text-sm dark:bg-slate-800 dark:text-white" 
+                                        placeholder="输入一句激励自己的话..." 
+                                        value={newQuote}
+                                        onChange={e => setNewQuote(e.target.value)}
+                                        onKeyPress={e => e.key === 'Enter' && handleAddQuote()}
+                                    />
+                                    <button onClick={handleAddQuote} className="bg-pink-500 text-white p-3 rounded-xl hover:bg-pink-600 active:scale-95 transition-all shadow-lg shadow-pink-200 dark:shadow-none">
+                                        <LucideIcon name="Plus" size={20}/>
+                                    </button>
+                                </div>
+                            </div>
+                        </TiltCard>
+
+                        {/* 卡片 3: 数据备份 */}
+                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-2">
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center shadow-inner"><LucideIcon name="Database" size={22}/></div>
+                                数据安全中心
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all group cursor-pointer shadow-sm hover:shadow-md" onClick={handleExport}>
+                                    <div className="flex items-center gap-5 mb-4">
+                                        <div className="w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="Download" size={24}/></div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 dark:text-white text-lg">导出全站备份</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">生成包含所有学员、课程记录的 JSON 文件</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <span className="text-xs font-bold text-blue-500 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 px-3 py-1.5 rounded-full group-hover:bg-blue-100 dark:group-hover:bg-blue-800 transition-colors">立即下载</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-500 transition-all group relative shadow-sm hover:shadow-md">
+                                    <div className="flex items-center gap-5 mb-4">
+                                        <div className="w-12 h-12 bg-green-500 text-white rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="UploadCloud" size={24}/></div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 dark:text-white text-lg">恢复历史数据</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">上传备份文件覆盖当前系统数据</div>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={importing} />
+                                        <div className="flex justify-end">
+                                            <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1.5 rounded-full group-hover:bg-green-100 dark:group-hover:bg-green-800 transition-colors flex items-center gap-2">
+                                                {importing ? <><div className="spinner w-3 h-3 border-current"></div> 恢复中...</> : '点击上传文件'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-8 text-xs text-amber-700/80 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-800 flex gap-3 items-start">
+                                <LucideIcon name="AlertCircle" size={18} className="shrink-0 mt-0.5"/>
+                                <span className="leading-relaxed">安全提示：恢复操作将智能合并数据。建议在执行恢复前，先手动点击“导出备份”以防万一。</span>
+                            </div>
+                        </TiltCard>
+                    </div>
+                </div>
+            )
+        }
+
+        // 0. 仪表盘 (Dashboard)
+        const Dashboard = () => {
+            const { students, courses, classGroups, followUps, theme, formatDate, teacherLevel, classFeeBase, loading, quotes } = useAppData();
+            const [greeting, setGreeting] = useState({ text: "早安", icon: "Sun" });
+            const [quote, setQuote] = useState("");
+
+            useEffect(() => {
+                const h = new Date().getHours();
+                if (h < 5) setGreeting({ text: "深夜好", icon: "Moon" }); else if (h < 11) setGreeting({ text: "早上好", icon: "Sun" }); else if (h < 14) setGreeting({ text: "中午好", icon: "Sun" }); else if (h < 19) setGreeting({ text: "下午好", icon: "Coffee" }); else setGreeting({ text: "晚上好", icon: "Moon" });
+                
+                // 从自定义语录中随机选择
+                const currentQuotes = (quotes && quotes.length > 0) ? quotes : DEFAULT_QUOTES;
+                setQuote(currentQuotes[Math.floor(Math.random() * currentQuotes.length)]);
+            }, [quotes]);
+            
+            // --- 薪资算法配置 ---
+            const SALARY = {
+                base: 2000, attendance: 100, transport: 100, phone: 50, housing: 280, performance: 500, lunchPerDay: 20, lunchMax: 440,
+                demoFee: 40 // Demo课单价
+            };
+            const FIXED_TOTAL = SALARY.base + SALARY.attendance + SALARY.transport + SALARY.phone + SALARY.housing + SALARY.performance;
+
+            const isWorkingDay = (d) => { const day = d.getDay(); return day === 0 || (day >= 3 && day <= 6); };
+            const now = new Date();
+            const currentMonthStr = formatDate(now).slice(0, 7);
+            const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthStr = formatDate(lastMonthDate).slice(0, 7);
+
+            // 计算本月工作日
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            let workingDaysCount = 0;
+            for (let i = 1; i <= daysInMonth; i++) if (isWorkingDay(new Date(now.getFullYear(), now.getMonth(), i))) workingDaysCount++;
+            const fixedPerDay = workingDaysCount > 0 ? FIXED_TOTAL / workingDaysCount : 0;
+
+            // 1. 今日收入
+            const todayStr = formatDate(now);
+            const todayCourses = courses.filter(c => c.dateStr === todayStr).sort((a,b)=>a.startTime.localeCompare(b.startTime));
+            
+            const classFeeRate = 1.5 * classFeeBase; // 动态计算单价
+
+            // 今日课时费计算 (混合模式)
+            const todayRegularIncome = todayCourses
+                .filter(c => c.type !== 'demo')
+                .reduce((acc, c) => acc + (c.studentIds?.length || 0) * classFeeRate, 0);
+            const todayDemoIncome = todayCourses
+                .filter(c => c.type === 'demo')
+                .reduce((acc, c) => acc + SALARY.demoFee, 0);
+            const todayTotalClassFee = todayRegularIncome + todayDemoIncome;
+
+            const isTodayWorking = isWorkingDay(now);
+            const todayLunch = isTodayWorking ? SALARY.lunchPerDay : 0;
+            const todayBase = isTodayWorking ? fixedPerDay : 0;
+            const todayTotalIncome = todayTotalClassFee + todayLunch + todayBase;
+
+            // 2. 本月薪资预估
+            const monthCourses = courses.filter(c => c.dateStr.startsWith(currentMonthStr));
+            const monthRegularIncome = monthCourses
+                .filter(c => c.type !== 'demo')
+                .reduce((acc, c) => acc + (c.studentIds?.length || 0) * classFeeRate, 0);
+            const monthDemoIncome = monthCourses
+                .filter(c => c.type === 'demo')
+                .reduce((acc, c) => acc + SALARY.demoFee, 0);
+                
+            const monthClassFee = monthRegularIncome + monthDemoIncome;
+            const rawMonthLunch = workingDaysCount * SALARY.lunchPerDay; 
+            const monthLunch = Math.min(rawMonthLunch, SALARY.lunchMax); // 餐补上限处理
+            const monthTotalEstimated = FIXED_TOTAL + monthLunch + monthClassFee;
+            
+            // 3. 本月累计课时 (只统计常规课的学生人次 * 2，Demo课不计入常规课时统计，或者单列)
+            const monthRegularHours = monthCourses
+                .filter(c => c.type !== 'demo')
+                .reduce((acc, c) => acc + ((c.studentIds?.length || 0) * 2), 0);
+
+            // 4. 运营指标
+            const getStats = (dateObj) => {
+                const mStr = formatDate(dateObj).slice(0, 7);
+                const followUpTarget = students.length * 2;
+                const followUpDone = followUps.filter(f => f.monthStr === mStr).reduce((acc, f) => acc + (f.count || 0), 0);
+                const followUpRate = followUpTarget > 0 ? (followUpDone / followUpTarget) * 100 : 0;
+                
+                const mCourses = courses.filter(c => c.dateStr.startsWith(mStr) && c.type !== 'demo'); // 只统计常规课出勤
+                let expectedAtt = 0, actualAtt = 0;
+                mCourses.forEach(c => {
+                    expectedAtt += (c.studentIds?.length || 0);
+                    if (c.attendance) Object.values(c.attendance).forEach(v => { if (v.status === 'present' || v.isMadeUp) actualAtt++; });
+                });
+                const attendanceRate = expectedAtt > 0 ? (actualAtt / expectedAtt) * 100 : 0;
+                return { followUpRate, attendanceRate };
+            };
+            const thisMonthStats = getStats(now);
+            const lastMonthStats = getStats(lastMonthDate);
+
+            // 学员增长
+            const getStudentGrowth = () => {
+                const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const currentTotal = students.length;
+                const newStudentsThisMonth = students.filter(s => s.createdAt && new Date(s.createdAt) >= startOfThisMonth).length;
+                return { current: currentTotal, prev: currentTotal - newStudentsThisMonth };
+            };
+            const studentStats = getStudentGrowth();
+
+            // 涨跌幅组件
+            const Trend = ({ curr, prev, isPercent }) => {
+                const diff = curr - prev;
+                const isUp = diff >= 0;
+                let valStr = isPercent ? `${Math.abs(diff).toFixed(1)}%` : `${Math.abs(prev === 0 ? (curr > 0 ? 100 : 0) : ((diff / prev) * 100)).toFixed(1)}%`;
+                const color = isUp ? "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" : "text-rose-500 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400";
+                const arrow = isUp ? "↑" : "↓";
+                return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 inline-flex items-center gap-0.5 ${color}`}>{arrow} {valStr}</span>;
+            };
+
+            return (
+                <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+                        <div>
+                            <h1 className="text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">
+                                {greeting.text} <LucideIcon name={greeting.icon} className={`text-${theme.accent}-500 animate-float`}/>
+                            </h1>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium text-lg">{quote}</p>
+                        </div>
+                        <div className="glass-panel px-5 py-2 rounded-2xl flex items-center gap-4 shadow-sm">
+                            <div className="text-right">
+                                <div className="text-2xl font-bold text-slate-800 dark:text-white tracking-tighter">{new Date().getDate()}</div>
+                                <div className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{new Date().toLocaleString('default', { month: 'long' })}</div>
+                            </div>
+                            <div className={`h-8 w-1 bg-${theme.primary}-400 rounded-full`}></div>
+                            <div className="text-sm font-bold text-slate-600 dark:text-slate-300">{isTodayWorking ? '工作日' : '休息日'}</div>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                           {[1,2,3,4].map(i => <Skeleton key={i} className="h-40 rounded-3xl" />)}
+                           <Skeleton className="md:col-span-2 h-96 rounded-3xl" />
+                           <Skeleton className="h-96 rounded-3xl" />
+                        </div>
+                    ) : (
+                    <>
+                    {/* 1. 核心指标 (Grid 4列 - 视觉升级) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* 左：今日营收 (更详细) */}
+                        <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden hover-lift group`}>
+                            <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 opacity-90 text-xs font-bold mb-1 uppercase tracking-wider"><LucideIcon name="Wallet" size={14}/> 今日总收入</div>
+                                        <div className="text-4xl font-extrabold tracking-tight">¥{todayTotalIncome.toFixed(2)}</div>
+                                    </div>
+                                    <div className="text-right opacity-80">
+                                        <div className="text-xs font-bold">{todayStr}</div>
+                                        <div className="text-[10px] mt-0.5">{isTodayWorking ? '工作日' : '休息日'}</div>
+                                    </div>
+                                </div>
+                                
+                                {/* 详情分割线 */}
+                                <div className="flex-1 flex items-end">
+                                    <div className="w-full grid grid-cols-3 gap-2 text-center bg-white/10 rounded-xl p-2 backdrop-blur-sm border border-white/10">
+                                        <div className="border-r border-white/10">
+                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">课时费</div>
+                                            <div className="text-lg font-bold">¥{todayTotalClassFee.toFixed(0)}</div>
+                                        </div>
+                                        <div className="border-r border-white/10">
+                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">底薪摊</div>
+                                            <div className="text-lg font-bold">¥{todayBase.toFixed(0)}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">餐补</div>
+                                            <div className="text-lg font-bold">¥{todayLunch}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Decorative background icon */}
+                             <div className="absolute -right-6 -bottom-6 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12"><LucideIcon name="Coins" size={160}/></div>
+                        </TiltCard>
+
+                        {/* 学员总数 (新增) */}
+                        <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className={`p-3 rounded-2xl bg-${theme.accent}-50 text-${theme.accent}-500`}><LucideIcon name="Users" size={24}/></div>
+                                <Trend curr={studentStats.current} prev={studentStats.prev} />
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold text-slate-800 dark:text-white">{studentStats.current}</div>
+                                <div className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">在读学员总数</div>
+                            </div>
+                        </TiltCard>
+
+                        {/* 教学质量 (合并) */}
+                        <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group">
+                            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">
+                                <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><LucideIcon name="Activity" size={16} className="text-indigo-500"/> 教学质量</div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {/* 回访率 */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">回访率</span>
+                                        <Trend curr={thisMonthStats.followUpRate} prev={lastMonthStats.followUpRate} isPercent={true} />
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.followUpRate.toFixed(0)}%</span>
+                                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{width: `${thisMonthStats.followUpRate}%`}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 出勤率 */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">出勤率</span>
+                                        <Trend curr={thisMonthStats.attendanceRate} prev={lastMonthStats.attendanceRate} isPercent={true} />
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.attendanceRate.toFixed(0)}%</span>
+                                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden">
+                                            <div className="h-full bg-blue-500 rounded-full" style={{width: `${thisMonthStats.attendanceRate}%`}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TiltCard>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* 左侧：今日课程 */}
+                        <div className="lg:col-span-2 glass-panel rounded-3xl p-8 flex flex-col h-[500px]">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-bold text-xl text-slate-800 dark:text-white flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-lg bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center`}><LucideIcon name="Calendar" size={18}/></div>
+                                    今日课程
+                                </h3>
+                                <span className="text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-3 py-1 rounded-full">{todayCourses.length} 节</span>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 -mr-2">
+                                {todayCourses.length > 0 ? todayCourses.map(c => (
+                                    <div key={c.id} className={`group flex items-center p-4 rounded-2xl border transition-all duration-300 ${c.type==='demo' ? 'bg-purple-50/50 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800 hover:border-purple-200 hover:shadow-md' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 hover:shadow-md'}`}>
+                                        <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-bold mr-5 shrink-0 shadow-sm ${c.type==='demo' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400' : `bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white`}`}>
+                                            <span>{c.startTime.split(':')[0]}</span>
+                                            <span className="text-[10px] opacity-60">:{c.startTime.split(':')[1]}</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-slate-800 dark:text-white text-base flex items-center gap-2 truncate">
+                                                {c.className}
+                                                {c.type==='demo' && <span className="bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold tracking-wide">DEMO</span>}
+                                            </div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-3 font-medium">
+                                                <span className="flex items-center gap-1"><LucideIcon name="Clock" size={12}/> {c.startTime}-{c.endTime}</span>
+                                                {c.type !== 'demo' && <span className="flex items-center gap-1"><LucideIcon name="Users" size={12}/> {c.studentIds?.length||0}人</span>}
+                                                {c.type === 'demo' && <span className="text-purple-500 dark:text-purple-400">试听课</span>}
+                                            </div>
+                                        </div>
+                                        <div className="text-right pl-4 border-l border-slate-100 dark:border-slate-700 ml-4">
+                                            <div className={`text-sm font-extrabold ${c.type==='demo'?'text-purple-600 dark:text-purple-400':`text-${theme.primary}-600 dark:text-blue-400`}`}>+¥{c.type==='demo' ? 40 : ((c.studentIds?.length||0) * classFeeRate).toFixed(1)}</div>
+                                            <div className={`mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold inline-block ${c.tasks?.teachingDone ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}`}>
+                                                {c.tasks?.teachingDone ? '已结课' : '待上课'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4"><LucideIcon name="Coffee" size={32} className="opacity-50"/></div>
+                                        <span className="font-medium">今天没有课程安排，好好休息一下吧~</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 右侧：课时详情 & 教师评级 */}
+                        <div className="flex flex-col gap-6 h-full">
+                            {/* New Card: 本月课时统计 */}
+                            <div className="glass-panel rounded-3xl p-8 flex-1 flex flex-col">
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"><LucideIcon name="PieChart" size={18}/></div>
+                                    本月绩效
+                                </h3>
+                                <div className="space-y-5 flex-1">
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">累计常规课时</div>
+                                                <div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{monthRegularHours} <span className="text-sm font-normal text-slate-400">h</span></div>
+                                            </div>
+                                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-500 flex items-center justify-center"><LucideIcon name="Clock" size={24}/></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">累计课时费</div>
+                                                <div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-orange-500 transition-colors">¥{monthClassFee.toFixed(0)}</div>
+                                            </div>
+                                            <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-2xl text-orange-500 flex items-center justify-center"><LucideIcon name="Coins" size={24}/></div>
+                                        </div>
+                                    </div>
+
+                                    {/* 本月总预测 (放在这里) */}
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-inner">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">本月薪资预测 (税前)</div>
+                                            <div className="text-xs bg-white dark:bg-slate-700 px-2 py-0.5 rounded border dark:border-slate-600 text-slate-400 font-mono">{workingDaysCount}工作日</div>
+                                        </div>
+                                        <div className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">¥{monthTotalEstimated.toFixed(0)}</div>
+                                        <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-hidden">
+                                            <div className="h-full bg-slate-400" style={{width: '60%'}}></div> {/* 这里可以是时间进度 */}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-slate-200/50 dark:border-slate-700 text-[10px] text-slate-400 flex justify-between items-center">
+                                    <span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">Rate: ¥{classFeeBase}/h</span>
+                                    <span>含常规 + Demo</span>
+                                </div>
+                            </div>
+                            
+                             <TiltCard className="glass-panel rounded-3xl p-6 flex items-center justify-between hover-lift cursor-default">
+                                <div>
+                                    <div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">当前职级</div>
+                                    <div className="text-lg font-bold text-slate-800 dark:text-white">{teacherLevel}</div>
+                                </div>
+                                <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30"><LucideIcon name="Award" size={24}/></div>
+                            </TiltCard>
+                        </div>
+                    </div>
+                    </>)}
+                </div>
+            )
+        }
+
+        // 1. 学员管理
+        const StudentManager = () => {
+            const { students, theme, lcAdd, lcUpdate, lcDelete, loading } = useAppData();
+            const addToast = useToast();
+            const [isAddOpen, setIsAddOpen] = useState(false);
+            const [newStudent, setNewStudent] = useState({ gender: '男', remainingHours: 0 });
+            const [searchTerm, setSearchTerm] = useState('');
+            
+            const handleSave = async () => {
+                if (!newStudent.name) return addToast("请填写姓名", "error");
+                const { id, ...data } = newStudent;
+                data.remainingHours = Number(data.remainingHours || 0); 
+                let success = id ? await lcUpdate('Student', id, data) : await lcAdd('Student', data);
+                if(success) { setIsAddOpen(false); setNewStudent({ gender: '男', remainingHours: 0 }); addToast("保存成功", "success"); }
+            };
+            const handleDelete = async (id) => { if(confirm('确认删除?')) await lcDelete('Student', id); };
+            
+            const getPredictionText = (remaining) => {
+                if (remaining <= 0) return "已欠费";
+                const hoursToDeplete = remaining;
+                const daysToDeplete = (hoursToDeplete / 8) * 30;
+                const targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + daysToDeplete);
+                const dateStr = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`;
+                if (remaining <= 4) return `预计${dateStr}用尽 (剩余4课次警告)`;
+                if (remaining <= 8) return `预计${dateStr}用尽 (剩余8课次提醒)`;
+                return `预计${dateStr}用尽`;
+            };
+
+            const getWarningColor = (remaining) => {
+                if (remaining <= 0) return "text-slate-900 bg-slate-100 border-slate-300 dark:text-slate-100 dark:bg-slate-700 dark:border-slate-600"; 
+                if (remaining <= 4) return "text-red-600 bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300";   
+                if (remaining <= 8) return "text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300"; 
+                return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400"; 
+            };
+            
+            const filteredStudents = students.filter(s => s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+            return (
+                <div className="p-4 space-y-6 pb-24 md:pb-4 pt-16 md:pt-4 animate-enter">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4"><h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">学员管理</h2><div className="flex gap-2 w-full md:w-auto"><div className="relative flex-1 md:w-64 group"><input className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm group-hover:shadow-md dark:bg-slate-800 dark:text-white" placeholder="搜索姓名..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /><div className="absolute left-3 top-3 text-gray-400 group-hover:text-blue-500 transition-colors"><LucideIcon name="Search" size={18} /></div></div><button onClick={() => { setNewStudent({gender:'男', remainingHours: 0}); setIsAddOpen(true); }} className={`bg-${theme.primary}-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm shadow-lg shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-700 hover:scale-105 active:scale-95 transition-all`}><LucideIcon name="Plus" size={18} /> 添加</button></div></div>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700"><thead className="bg-gray-50/50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">姓名</th><th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">剩余课时</th><th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">预测</th><th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">操作</th></tr></thead><tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-50 dark:divide-slate-700">{filteredStudents.map((s, idx) => (<tr key={s.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-700/50 transition-colors animate-pop" style={{animationDelay: `${idx * 50}ms`}}><td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{s.name} <span className="text-xs text-gray-400 ml-1">({s.gender})</span></td><td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getWarningColor(s.remainingHours || 0)}`}>{s.remainingHours || 0} 课时</span></td><td className="px-6 py-4 text-xs text-gray-500 dark:text-slate-400">{getPredictionText(s.remainingHours || 0)}</td><td className="px-6 py-4 text-right"><button onClick={() => {setNewStudent(s); setIsAddOpen(true)}} className={`text-${theme.primary}-600 mr-4 text-sm font-medium hover:underline hover:scale-105 inline-block transition-transform`}>编辑</button><button onClick={() => handleDelete(s.id)} className="text-red-500 text-sm font-medium hover:underline hover:scale-105 inline-block transition-transform">删除</button></td></tr>))}</tbody></table></div>{filteredStudents.length === 0 && <div className="p-12 text-center text-gray-400 dark:text-slate-500">未找到相关学员</div>}</div>
+                    <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title={newStudent.id ? "编辑学员" : "添加学员"}><div className="space-y-5"><div className="grid grid-cols-2 gap-4"><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">姓名</label><input className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:bg-slate-700 dark:text-white" placeholder="输入姓名" value={newStudent.name||''} onChange={e=>setNewStudent({...newStudent, name:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">剩余课时</label><input type="number" className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-mono font-bold dark:bg-slate-700 dark:text-white" value={newStudent.remainingHours||0} onChange={e=>setNewStudent({...newStudent, remainingHours:e.target.value})} /></div></div><div className="flex gap-4"><div className="flex-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">性别</label><select className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all" value={newStudent.gender||'男'} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option>男</option><option>女</option></select></div><div className="flex-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">年龄</label><input className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:bg-slate-700 dark:text-white" type="number" placeholder="0" value={newStudent.age||''} onChange={e=>setNewStudent({...newStudent, age:e.target.value})} /></div></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">备注信息</label><textarea className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl h-24 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none dark:bg-slate-700 dark:text-white" placeholder="输入学员情况..." value={newStudent.notes||''} onChange={e=>setNewStudent({...newStudent, notes:e.target.value})}></textarea></div><button onClick={handleSave} className={`w-full bg-${theme.primary}-600 text-white px-6 py-3.5 rounded-xl font-bold hover:bg-${theme.primary}-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200`}>保存学员信息</button></div></Modal>
+                </div>
+            );
+        };
+
+        // 2. 课程表
+        const CourseSchedule = () => {
+            const { courses, students, classGroups, calendarDays, formatDate, theme, lcAdd, lcUpdate, lcDelete, setCourses, viewMode, setViewMode, classFeeBase, fetchAll, loading } = useAppData();
+            const addToast = useToast();
+            const [selectedCourse, setSelectedCourse] = useState(null);
+            const [isEditOpen, setIsEditOpen] = useState(false);
+            const [newCourse, setNewCourse] = useState({ type: 'regular' });
+
+            const handleCellClick = (dStr, dayIndex) => {
+                setNewCourse({ dateStr: dStr, dayOfWeek: dayIndex, startTime: '09:00', endTime: '10:00', studentIds: [], tasks: {}, attendance: {}, type: 'regular' });
+                setSelectedCourse(null); setIsEditOpen(true);
+            };
+
+            const saveCourse = async () => {
+                if (!newCourse.className) return addToast("请填写课程名称", "error");
+                const { id, ...data } = newCourse;
+                let success = id ? await lcUpdate('Course', id, data) : await lcAdd('Course', data);
+                if(success) { setIsEditOpen(false); addToast("排课成功", "success"); }
+            };
+            const deleteCourse = async () => { if(confirm("删除课程?")) { await lcDelete('Course', selectedCourse.id); setIsEditOpen(false); } };
+            
+            const updateDirectly = async (id, data) => {
+                setCourses(prev => prev.map(c => c.id === id ? {...c, ...data} : c));
+                const obj = AV.Object.createWithoutData('Course', id);
+                Object.keys(data).forEach(k => {
+                     if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return;
+                     obj.set(k, data[k]);
+                });
+                await obj.save();
+            };
+
+            const toggleAtt = async (sid, status) => {
+                if(!selectedCourse) return;
+                const att = selectedCourse.attendance || {};
+                const currentStatus = att[sid]?.status;
+                
+                if (selectedCourse.id && newCourse.type !== 'demo') { 
+                    const student = students.find(s => s.id === sid);
+                    if (student) {
+                        let newRemaining = student.remainingHours || 0;
+                        let shouldUpdateStudent = false;
+                        if (status === 'present' && currentStatus !== 'present') { newRemaining -= 2; shouldUpdateStudent = true; addToast(`已扣除 ${student.name} 2 课时`, "success"); } 
+                        else if (status === 'absent' && currentStatus === 'present') { newRemaining += 2; shouldUpdateStudent = true; addToast(`已返还 ${student.name} 2 课时`, "info"); }
+
+                        if (shouldUpdateStudent) {
+                            await lcUpdate('Student', sid, { remainingHours: newRemaining });
+                        }
+                    }
+                }
+
+                if(!selectedCourse.id) { setNewCourse(prev => { const att = prev.attendance||{}; return {...prev, attendance: {...att, [sid]: {studentId: sid, status}}}; }); return; }
+                
+                const newAtt = {...att, [sid]: {studentId: sid, status, isMadeUp: false}};
+                setNewCourse(prev => ({...prev, attendance: newAtt}));
+                await updateDirectly(selectedCourse.id, { attendance: newAtt });
+            };
+            
+            const toggleTask = (t) => {
+                if(!selectedCourse.id) { setNewCourse(prev => { const tasks = prev.tasks||{}; return {...prev, tasks: {...tasks, [t]: !tasks[t]}}; }); return; }
+                const tasks = selectedCourse.tasks || {};
+                const newTasks = {...tasks, [t]: !tasks[t]};
+                setNewCourse(prev => ({...prev, tasks: newTasks}));
+                updateDirectly(selectedCourse.id, { tasks: newTasks });
+            };
+
+            const handleStudentSelect = (e) => { const sid = e.target.value; if(sid && !newCourse.studentIds?.includes(sid)) { setNewCourse(prev => ({...prev, studentIds: [...(prev.studentIds||[]), sid]})); } e.target.value = ""; };
+            const handleClassGroupSelect = (e) => { const gid = e.target.value; const g = classGroups.find(x => x.id === gid); if(g) { setNewCourse(prev => { const currentIds = prev.studentIds || []; const newIds = [...new Set([...currentIds, ...(g.studentIds||[])])]; return {...prev, studentIds: newIds}; }); addToast(`已导入 ${g.name}`, "success"); } e.target.value = ""; };
+
+            const currentViewCourses = courses.filter(c => { const start = calendarDays[0]; const end = calendarDays[calendarDays.length - 1]; return c.dateStr >= formatDate(start) && c.dateStr <= formatDate(end); });
+            const currentViewHours = currentViewCourses.reduce((acc, c) => { if (c.type === 'demo') return acc; const studentCount = c.studentIds ? c.studentIds.length : 0; return acc + (studentCount * 2); }, 0);
+            const classFeeRate = 1.5 * (classFeeBase || 0);
+            const viewText = viewMode === 'day' ? '本日' : viewMode === 'week' ? '本周' : '本月';
+            const gridColsClass = viewMode === 'day' ? 'grid-cols-1' : viewMode === 'month' ? 'grid-cols-7' : 'grid-cols-1 md:grid-cols-7';
+
+            return (
+                <div className="flex flex-col h-full overflow-hidden animate-enter">
+                    <div className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 shadow-sm z-10 pt-16 md:pt-4"><div className="flex items-center gap-4"><h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">课程表</h2><div className="hidden md:flex items-center bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold gap-1"><LucideIcon name="Clock" size={14}/> {viewText}常规课时: {currentViewHours}</div><div className="flex bg-gray-100 dark:bg-slate-700 p-1 rounded-xl text-xs font-medium"><button onClick={()=>setViewMode('day')} className={`px-3 py-1.5 rounded-lg transition-all duration-200 ${viewMode==='day'?'bg-white dark:bg-slate-600 shadow-sm text-gray-800 dark:text-white scale-105':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>日</button><button onClick={()=>setViewMode('week')} className={`px-3 py-1.5 rounded-lg transition-all duration-200 ${viewMode==='week'?'bg-white dark:bg-slate-600 shadow-sm text-gray-800 dark:text-white scale-105':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>周</button><button onClick={()=>setViewMode('month')} className={`px-3 py-1.5 rounded-lg transition-all duration-200 ${viewMode==='month'?'bg-white dark:bg-slate-600 shadow-sm text-gray-800 dark:text-white scale-105':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>月</button></div></div><WeekNavigator /></div>
+                    {loading ? (<div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-7 gap-2">{[...Array(7)].map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}</div>) : (
+                    <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-2 pb-24 md:pb-4"><div className={`grid ${gridColsClass} gap-2`}>{calendarDays.map((d, i) => { const dStr = formatDate(d); const dayCourses = currentViewCourses.filter(c => c.dateStr === dStr).sort((a,b)=>a.startTime.localeCompare(b.startTime)); const isToday = dStr === formatDate(new Date()); const isMonthView = viewMode === 'month'; return (<div key={dStr} onClick={()=>handleCellClick(dStr, i)} className={`${isMonthView ? 'min-h-[100px]' : 'min-h-[120px] md:min-h-[400px]'} border rounded-xl p-2 transition-all duration-200 cursor-pointer ${isToday ? `bg-${theme.primary}-50/50 dark:bg-slate-800 border-${theme.primary}-200 dark:border-${theme.primary}-700 ring-2 ring-${theme.primary}-100 dark:ring-${theme.primary}-900` : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-gray-300 hover:shadow-md'}`}><div className={`text-center py-1 border-b border-gray-100 dark:border-slate-700 mb-2 text-xs font-bold ${isToday ? `text-${theme.primary}-600` : 'text-gray-500 dark:text-slate-400'}`}>{isMonthView ? (<div className="flex justify-between px-1"><span className="opacity-50 text-[10px]">{['日','一','二','三','四','五','六'][d.getDay()]}</span><span>{d.getDate()}</span></div>) : (<div className="flex justify-between md:justify-center px-1"><span>周{['日','一','二','三','四','五','六'][d.getDay()]}</span><span className="opacity-75">{dStr.slice(5)}</span></div>)}</div><div className="space-y-1.5">{dayCourses.map((c, idx) => (<div key={c.id} onClick={(e)=>{e.stopPropagation(); setSelectedCourse(c); setNewCourse(c); setIsEditOpen(true);}} className={`bg-white dark:bg-slate-700 border-l-4 border-${theme.primary}-500 shadow-sm p-2 rounded text-xs hover:shadow-md hover:-translate-y-0.5 transition-all group overflow-hidden animate-pop`} style={{animationDelay: `${idx * 50}ms`}}><div className="font-bold truncate text-gray-800 dark:text-white">{c.className}</div>{!isMonthView && <div className="text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1"><LucideIcon name="Clock" size={10}/> {c.startTime}-{c.endTime}</div>}{!isMonthView && <div className="mt-1 pt-1 border-t border-gray-100 dark:border-slate-600 flex items-center gap-1 text-gray-400 group-hover:text-${theme.primary}-500"><LucideIcon name="Users" size={10}/> {c.studentIds?.length||0}人</div>}{isMonthView && <div className="text-[10px] text-gray-400 truncate mt-0.5">{c.startTime}</div>}</div>))}</div></div>) })}</div></div>
+                    )}
+                    <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}><div className="space-y-5"><div className="flex gap-4 p-1 bg-gray-100 dark:bg-slate-700 rounded-xl"><button onClick={()=>setNewCourse({...newCourse, type:'regular'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type!=='demo' ? 'bg-white dark:bg-slate-600 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>常规课</button><button onClick={()=>setNewCourse({...newCourse, type:'demo'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type==='demo' ? 'bg-white dark:bg-slate-600 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>Demo试听课</button></div><div className="grid grid-cols-2 gap-4"><div className="col-span-2 md:col-span-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">课程名称</label><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} /></div><div className="col-span-2 md:col-span-1 flex flex-col"><div className="flex justify-between mb-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">内容/备注</label></div><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} placeholder={newCourse.type==='demo'?"请在此记录试听学生姓名":"课程内容"} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">开始</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">结束</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div></div>{newCourse.type !== 'demo' ? (<div className="bg-gray-50/80 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-200 dark:border-slate-600"><div className="flex gap-3 mb-3"><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleStudentSelect}><option value="">+ 添加学员</option>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white dark:bg-slate-600 border px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 shadow-sm animate-pop dark:text-white dark:border-slate-500">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold px-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30">×</button></span> : null; })}</div></div>) : (<div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2"><LucideIcon name="Sparkles" size={16}/><span>Demo课为试听性质，不关联系统学员，课酬固定 ¥40/节。请在备注栏记录学生姓名。</span></div>)}{selectedCourse && (<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"><div className="border border-orange-100 dark:border-orange-900/50 p-3 rounded-xl bg-orange-50/50 dark:bg-orange-900/20"><div className="font-bold mb-3 text-orange-800 dark:text-orange-400 flex items-center gap-2"><LucideIcon name="ClipboardList" size={16}/> 教师任务</div><div className="space-y-2">{['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (<label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 dark:hover:bg-orange-800/30 p-1.5 rounded-lg transition-colors"><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> <span className="dark:text-slate-300">{k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</span></label>))}</div></div>{newCourse.type !== 'demo' && (<div className="border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/20"><div className="font-bold mb-3 text-blue-800 dark:text-blue-400 flex items-center gap-2"><LucideIcon name="UserCheck" size={16}/> 考勤打卡</div><div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); const status = newCourse.attendance?.[sid]?.status; return st ? <div key={sid} className="flex justify-between items-center p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-800/30 rounded-lg transition-colors"><span className="dark:text-slate-300">{st.name}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='present'?'bg-green-500 text-white border-green-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='absent'?'bg-red-500 text-white border-red-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>缺</button></div></div> : null; })}</div></div>)}</div>)}<div className="flex gap-3 pt-2">{selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 transition-colors">删除</button>}<div className="flex-1"></div><button onClick={() => setIsEditOpen(false)} className="text-gray-500 dark:text-gray-400 px-5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">取消</button><button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-8 py-2.5 rounded-xl shadow-lg shadow-${theme.primary}-200 dark:shadow-none font-medium hover:bg-${theme.primary}-700 hover:-translate-y-0.5 transition-all`}>保存</button></div></div></Modal>
+                </div>
+            );
+        };
+
+        const WeekNavigator = () => {
+            const { changeWeek, calendarDays, formatDate, viewMode } = useAppData();
+            const title = useMemo(() => {
+                if (!calendarDays.length) return "";
+                const start = calendarDays[0];
+                if (viewMode === 'day') return formatDate(start);
+                if (viewMode === 'month') return `${start.getFullYear()}年 ${start.getMonth() + 1}月`;
+                const end = calendarDays[calendarDays.length - 1];
+                return `${formatDate(start).slice(5)} - ${formatDate(end).slice(5)}`;
+            }, [calendarDays, viewMode, formatDate]);
+
+            return (
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 rounded-xl p-1.5 border border-gray-200 dark:border-slate-600">
+                    <button onClick={()=>changeWeek(-1)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm text-gray-600 dark:text-gray-300 transition-all"><LucideIcon name="ChevronLeft" size={18}/></button>
+                    <span className="text-xs px-3 font-bold text-gray-700 dark:text-gray-300 min-w-[90px] text-center">{title}</span>
+                    <button onClick={()=>changeWeek(1)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm text-gray-600 dark:text-gray-300 transition-all"><LucideIcon name="ChevronRight" size={18}/></button>
+                </div>
+            )
+        }
+
+        // 3. 班级管理
+        const ClassGroupManager = () => {
+            const { classGroups, students, theme, lcAdd, lcUpdate, lcDelete } = useAppData();
+            const addToast = useToast();
+            const [isEdit, setIsEdit] = useState(false);
+            const [group, setGroup] = useState({});
+            const save = async () => { if(group.name){ const { id, ...data } = group; let success = id ? await lcUpdate('ClassGroup', id, data) : await lcAdd('ClassGroup', data); if(success) { setIsEdit(false); setGroup({}); addToast("保存成功", "success"); } } };
+            const deleteGroup = async (id) => { if(confirm('删除?')) await lcDelete('ClassGroup', id); };
+
+            return (
+                <div className="p-4 space-y-6 pb-24 md:pb-4 pt-16 md:pt-4 animate-enter">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">班级管理</h2><button onClick={()=>{setGroup({name:'', studentIds:[]}); setIsEdit(true)}} className={`bg-${theme.primary}-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm shadow-lg shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-700 hover:scale-105 active:scale-95 transition-all`}><LucideIcon name="Plus" size={18}/> 新建</button></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{classGroups.map((g, idx) => { const groupStudents = (g.studentIds || []).map(sid => students.find(s => s.id === sid)).filter(Boolean); return (<div key={g.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:border-gray-200 hover:-translate-y-1 transition-all duration-300 hover-lift animate-pop group" style={{animationDelay: `${idx * 50}ms`}}><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-lg text-gray-800 dark:text-white">{g.name}</h3><div className="flex gap-1 transition-opacity"><button onClick={()=>{setGroup(g); setIsEdit(true)}} className={`text-${theme.primary}-600 p-1.5 hover:bg-${theme.primary}-50 dark:hover:bg-slate-700 rounded-lg transition-colors`}><LucideIcon name="Edit" size={16}/></button><button onClick={()=>{deleteGroup(g.id)}} className="text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><LucideIcon name="Trash2" size={16}/></button></div></div><div className="bg-gray-50/80 dark:bg-slate-700/50 p-3 rounded-xl border border-gray-100 dark:border-slate-600 min-h-[80px]"><div className="text-[10px] text-gray-400 font-bold mb-2 flex justify-between uppercase tracking-wider"><span>学员名单</span><span className={`px-2 py-0.5 rounded-full text-xs ${groupStudents.length > 0 ? `bg-${theme.primary}-100 text-${theme.primary}-700 dark:bg-slate-600 dark:text-white` : 'bg-gray-200 text-gray-500'}`}>{groupStudents.length}人</span></div><div className="flex flex-wrap gap-1.5">{groupStudents.length > 0 ? groupStudents.map(s => <span key={s.id} className="bg-white dark:bg-slate-600 border border-gray-100 dark:border-slate-500 px-2.5 py-1 rounded-lg text-xs text-gray-600 dark:text-slate-200 shadow-sm flex items-center hover:border-gray-300 transition-colors">{s.name}</span>) : <span className="text-xs text-gray-300 italic py-1 pl-1">暂无学员...</span>}</div></div></div>); })}</div>
+                    <Modal isOpen={isEdit} onClose={()=>setIsEdit(false)} title="编辑班级"><div className="space-y-5"><input className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:bg-slate-700 dark:text-white" placeholder="班级名" value={group.name||''} onChange={e=>setGroup({...group, name:e.target.value})} /><div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-slate-600 p-3 rounded-xl grid grid-cols-2 gap-2 bg-gray-50/50 custom-scrollbar">{students.map(s=><label key={s.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 p-2 rounded-lg border border-gray-100 dark:border-slate-600 hover:border-blue-200 cursor-pointer transition-all dark:text-slate-200"><input type="checkbox" className="rounded text-blue-500 focus:ring-blue-500" checked={group.studentIds?.includes(s.id)||false} onChange={()=>{ const ids = group.studentIds||[]; setGroup({...group, studentIds: ids.includes(s.id)?ids.filter(i=>i!==s.id):[...ids, s.id]}); }}/>{s.name}</label>)}</div><button onClick={save} className={`w-full bg-${theme.primary}-600 text-white py-3 rounded-xl font-bold hover:bg-${theme.primary}-700 transition-all shadow-md`}>保存</button></div></Modal>
+                </div>
+            )
+        }
+
+        const FollowUpManager = () => {
+            const { students, classGroups, followUps, formatDate, theme, exportToCSV, lcAdd, lcUpdate } = useAppData();
+            const currentMonth = formatDate(new Date()).slice(0,7);
+            const total = students.length * 2;
+            const done = followUps.filter(f => f.monthStr === currentMonth).reduce((s,r)=>s+r.count,0);
+            
+            const groupedData = useMemo(() => {
+                const groups = classGroups.map(g => { const groupStudents = (g.studentIds || []).map(sid => students.find(s => s.id === sid)).filter(Boolean); return { id: g.id, name: g.name, students: groupStudents }; });
+                const assignedStudentIds = new Set(); classGroups.forEach(g => { if(g.studentIds) g.studentIds.forEach(sid => assignedStudentIds.add(sid)); });
+                const unassignedStudents = students.filter(s => !assignedStudentIds.has(s.id));
+                if (unassignedStudents.length > 0) { groups.push({ id: 'unassigned', name: '未分配班级', students: unassignedStudents, isUnassigned: true }); }
+                return groups;
+            }, [students, classGroups]);
+
+            const toggle = async (sid, idx) => { const ex = followUps.find(f => f.studentId === sid && f.monthStr === currentMonth); const newCount = (ex && ex.count === idx + 1) ? idx : idx + 1; if (ex) await lcUpdate('FollowUp', ex.id, { count: newCount }); else await lcAdd('FollowUp', { studentId: sid, monthStr: currentMonth, count: newCount }); };
+            const exportCSV = () => { const rows = []; groupedData.forEach(g => { g.students.forEach(s => { const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth); rows.push([g.name, s.name, currentMonth, rec?rec.count:0]); }); }); exportToCSV(`回访_${currentMonth}.csv`, [['班级', '姓名','月份','次数'], ...rows]); };
+
+            return (
+                <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 pb-24 md:pb-6 pt-16 md:pt-4 animate-enter">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">回访管理 <span className="text-sm font-normal text-gray-400 ml-2">({currentMonth})</span></h2><button onClick={exportCSV} className={`text-${theme.primary}-600 bg-${theme.primary}-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-${theme.primary}-100 transition-colors flex items-center gap-1`}><LucideIcon name="Download" size={14}/> 导出表格</button></div>
+                    <div className={`bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 text-white p-6 rounded-2xl shadow-xl shadow-${theme.primary}-500/20 flex justify-between text-center relative overflow-hidden group`}><div className="absolute top-0 right-0 p-8 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-700"><LucideIcon name="TrendingUp" size={100}/></div><div className="flex-1 z-10"><div className="text-xs opacity-75 mb-1 uppercase tracking-wider font-semibold">目标</div><div className="text-3xl font-bold">{total}</div></div><div className="flex-1 z-10 border-l border-white/20 border-r"><div className="text-xs opacity-75 mb-1 uppercase tracking-wider font-semibold">完成</div><div className="text-3xl font-bold">{done}</div></div><div className="flex-1 z-10"><div className="text-xs opacity-75 mb-1 uppercase tracking-wider font-semibold">进度</div><div className="text-3xl font-bold text-yellow-300">{total>0?Math.round(done/total*100):0}%</div></div></div>
+                    <div className="space-y-6">{groupedData.map((group, gIdx) => (<div key={group.id} className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border overflow-hidden transition-all hover:shadow-md animate-pop ${group.isUnassigned ? 'border-dashed border-gray-300' : 'border-gray-100 dark:border-slate-700'}`} style={{animationDelay: `${gIdx * 100}ms`}}><div className={`px-6 py-4 border-b border-gray-50 dark:border-slate-700 flex justify-between items-center ${group.isUnassigned ? 'bg-gray-50/50 dark:bg-slate-700/50' : 'bg-white dark:bg-slate-800'}`}><h3 className="font-bold text-gray-700 dark:text-slate-200 flex items-center gap-2">{group.isUnassigned ? <LucideIcon name="Users" size={18} className="text-gray-400"/> : <LucideIcon name="Layers" size={18} className={`text-${theme.primary}-500`}/>}{group.name}</h3><span className="text-xs font-bold bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 px-2.5 py-1 rounded-full">{group.students.length} 人</span></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-50 dark:divide-slate-700"><thead className="bg-gray-50/30 dark:bg-slate-700/30"><tr><th className="px-6 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-1/3">学员</th><th className="px-6 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">本月进度</th></tr></thead><tbody className="divide-y divide-gray-50 dark:divide-slate-700 bg-white dark:bg-slate-800">{group.students.map(s => { const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth); const c = rec?.count||0; return (<tr key={s.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-700/50 transition-colors group"><td className="px-6 py-3.5 font-medium text-gray-700 dark:text-slate-300 flex items-center gap-3"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${c===2 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>{s.name[0]}</div>{s.name}</td><td className="px-6 py-3.5"><div className="flex items-center gap-2">{[0,1,2].map(i => (<div key={i} onClick={()=>toggle(s.id, i)} className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border ${i<c?`bg-${theme.primary}-500 text-white border-${theme.primary}-600 shadow-md scale-110`:'bg-white dark:bg-slate-700 text-gray-300 border-gray-200 dark:border-slate-600 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-slate-600'}`}><LucideIcon name="CheckSquare" size={14}/></div>))}<span className="text-xs text-gray-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 duration-300">{c === 0 ? '未开始' : c === 1 ? '跟进中' : c === 2 ? '完成' : '已归档'}</span></div></td></tr>) })}{group.students.length === 0 && <tr><td colSpan="2" className="p-8 text-center text-gray-400 italic text-sm">空空如也 ~</td></tr>}</tbody></table></div></div>))}
+                        {groupedData.length === 0 && students.length === 0 && <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700"><div className="text-gray-300 mb-2"><LucideIcon name="Users" size={48} className="mx-auto"/></div><p className="text-gray-400">暂无数据，请先前往“学员管理”添加学员</p></div>}
+                    </div>
+                </div>
+            )
+        }
+
+        const AttendanceManager = () => {
+            const { courses, students, attendanceMode, handleAttendanceModeChange, theme, formatDate, exportToCSV, lcUpdate } = useAppData();
+            const addToast = useToast();
+            const currentMonth = formatDate(new Date()).slice(0,7);
+            const week = Math.ceil(new Date().getDate()/7);
+            
+            let target = 0;
+            if(attendanceMode === 'estimated') target = students.length * week; else courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) target += (c.studentIds?.length||0); });
+            let actual = 0;
+            const absents = [];
+            courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) { Object.values(c.attendance||{}).forEach(a => { if(a.status==='present' || (a.status==='absent' && a.isMadeUp)) actual++; if(a.status==='absent' && !a.isMadeUp) absents.push({cname: c.className, date: c.dateStr, sid: a.studentId, cid: c.id}); }); } });
+            const rate = target>0 ? (actual/target)*100 : 0;
+            const makeup = async (cid, sid) => { if(confirm("确认补课?")) { const course = courses.find(c => c.id === cid); if (course) { const newAtt = {...course.attendance, [sid]: {...course.attendance[sid], isMadeUp: true}}; await lcUpdate('Course', cid, { attendance: newAtt }); addToast("补课已记录", "success"); } } }
+            const exportAtt = () => { const rows = []; courses.forEach(c=>{ if(c.dateStr.startsWith(currentMonth)) { (c.studentIds||[]).forEach(sid=>{ const s = students.find(x=>x.id===sid); const a = c.attendance?.[sid]; rows.push([c.dateStr, c.className, s?.name||'未知', a?.status==='present'?'到':a?.status==='absent'?'缺':'未记', a?.isMadeUp?'是':'否']); }) } }); exportToCSV(`考勤_${currentMonth}.csv`, [['日期','课程','姓名','状态','已补课'],...rows]); };
+            return (
+                <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6 md:space-y-8 pb-24 md:pb-6 pt-16 md:pt-4 animate-enter">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-3"><h2 className="text-xl font-bold text-gray-800 dark:text-white">考勤看板 ({currentMonth})</h2><div className="flex gap-2 bg-white dark:bg-slate-700 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600"><button onClick={()=>{handleAttendanceModeChange('estimated'); addToast("已切换至预估模式")}} className={`px-3 py-1.5 text-xs rounded-md transition-all ${attendanceMode==='estimated'?`bg-${theme.primary}-100 text-${theme.primary}-700 font-bold shadow-sm`:'text-gray-500 dark:text-gray-400 hover:bg-gray-50'}`}>预估模式</button><button onClick={()=>{handleAttendanceModeChange('scheduled'); addToast("已切换至精准模式")}} className={`px-3 py-1.5 text-xs rounded-md transition-all ${attendanceMode==='scheduled'?`bg-${theme.primary}-100 text-${theme.primary}-700 font-bold shadow-sm`:'text-gray-500 dark:text-gray-400 hover:bg-gray-50'}`}>精准模式</button><div className="w-px bg-gray-200 dark:bg-slate-600 mx-1"></div><button onClick={exportAtt} className="px-2 text-gray-500 dark:text-gray-400 hover:text-gray-700"><LucideIcon name="Download" size={16}/></button></div></div>
+                    <div className={`p-6 rounded-xl shadow-lg text-white grid grid-cols-3 gap-4 text-center relative overflow-hidden ${rate>=94?'bg-gradient-to-br from-green-500 to-green-700':'bg-gradient-to-br from-red-500 to-red-700'}`}><div className="absolute right-0 top-0 p-4 opacity-10"><LucideIcon name={rate>=94?"TrendingUp":"AlertCircle"} size={100}/></div><div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">本月目标</div><div className="text-3xl font-bold">{target}</div></div><div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">实际出勤</div><div className="text-3xl font-bold">{actual}</div></div><div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">达标率 (94%)</div><div className="text-3xl font-bold flex items-center justify-center gap-1">{rate.toFixed(1)}%</div></div></div>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-slate-700"><div className="p-3 font-bold text-gray-600 dark:text-slate-300 text-xs bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 flex items-center gap-2"><LucideIcon name="AlertCircle" size={14} className="text-red-500"/> 缺勤待补课列表</div><table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700"><tbody className="text-sm">{absents.map((r,i) => { const s = students.find(x=>x.id===r.sid); return <tr key={i} className="hover:bg-gray-50 transition-colors"><td className="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">{s?.name}</td><td className="px-4 py-3 text-gray-500 dark:text-slate-400">{r.cname}</td><td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs">{r.date}</td><td className="px-4 py-3 text-right"><button onClick={()=>makeup(r.cid, r.sid)} className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold hover:bg-green-200 transition-colors shadow-sm border border-green-200">补课</button></td></tr>})}{absents.length===0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400 italic">🎉 太棒了！本月所有缺勤已处理完毕。</td></tr>}</tbody></table></div>
+                </div>
+            )
+        }
+
+        const BackupManager = () => {
+            const { students, courses, classGroups, followUps, formatDate, theme, fetchAll } = useAppData();
+            const addToast = useToast();
+            const [importing, setImporting] = useState(false);
+            const handleExport = () => { const backupData = { version: "1.0", timestamp: new Date().toISOString(), students, courses, classGroups, followUps }; const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `school_backup_${formatDate(new Date())}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); addToast("备份文件已下载", "success"); };
+            const handleImport = async (e) => { const file = e.target.files[0]; if (!file) return; setImporting(true); const reader = new FileReader(); reader.onload = async (event) => { try { const data = JSON.parse(event.target.result); if(!data.students || !data.classGroups) throw new Error("无效的备份文件"); addToast("开始恢复数据...", "info"); const restoreItem = async (className, item) => { const { id, createdAt, updatedAt, objectId, ...payload } = item; try { const obj = AV.Object.createWithoutData(className, id); Object.keys(payload).forEach(k => obj.set(k, payload[k])); await obj.save(); return { oldId: id, newId: id }; } catch (err) { const NewObj = AV.Object.extend(className); const newObj = new NewObj(); Object.keys(payload).forEach(k => newObj.set(k, payload[k])); await newObj.save(); return { oldId: id, newId: saved.id }; } }; for (const s of data.students) await restoreItem('Student', s); for (const g of data.classGroups) await restoreItem('ClassGroup', g); for (const c of data.courses) await restoreItem('Course', c); for (const f of data.followUps) await restoreItem('FollowUp', f); await fetchAll(); addToast("数据恢复完成！", "success"); } catch (err) { console.error(err); addToast("恢复失败: " + err.message, "error"); } finally { setImporting(false); e.target.value = ''; } }; reader.readAsText(file); };
+            return (
+                <div className="p-4 md:p-8 max-w-4xl mx-auto pt-16 md:pt-8"><h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2"><LucideIcon name="Database" size={28}/> 数据备份与恢复</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-shadow"><div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4"><LucideIcon name="Download" size={24}/></div><h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">导出全站备份</h3><p className="text-sm text-gray-500 dark:text-slate-400 mb-6">下载包含所有学员、课程、班级及回访记录的 JSON 数据文件。建议定期备份以防数据丢失。</p><button onClick={handleExport} className={`w-full bg-${theme.primary}-600 text-white py-2 rounded-lg font-medium hover:bg-${theme.primary}-700 transition-colors shadow`}>下载备份文件</button></div><div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-shadow"><div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4"><LucideIcon name="UploadCloud" size={24}/></div><h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">恢复/导入备份</h3><p className="text-sm text-gray-500 dark:text-slate-400 mb-6">上传备份文件以恢复数据。系统会自动更新现有数据，并智能修复被误删数据的关联关系。</p><div className="relative"><input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={importing} /><button disabled={importing} className={`w-full border-2 border-dashed border-${theme.primary}-300 text-${theme.primary}-600 py-2 rounded-lg font-medium hover:bg-${theme.primary}-50 transition-colors flex justify-center items-center gap-2`}>{importing ? <><div className="spinner w-4 h-4 border-current"></div> 恢复中...</> : '点击上传备份文件'}</button></div></div></div><div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800 flex gap-3"><LucideIcon name="AlertCircle" size={20} className="shrink-0 mt-0.5"/><div><div className="font-bold mb-1">安全提示</div><p>为了数据安全，恢复操作会尝试保留原始数据的 ID。如果发现数据已被删除（例如误删了某个学员），系统会自动创建新数据并尝试修复该学员在班级和课程表中的关联，但仍建议操作前先进行一次导出备份。</p></div></div></div>
+            )
+        }
+
+        // --- 主程序入口 ---
         function SchoolSystem() {
             const addToast = useToast(); 
-            const [activeTab, setActiveTab] = useState('schedule');
-            const [theme, setTheme] = useState(THEMES[0]);
+            const [activeTab, setActiveTab] = useState('dashboard'); // 默认进入 Dashboard
+            
+            // 随机主题
+            const [theme, setTheme] = useState(() => {
+                const randomIndex = Math.floor(Math.random() * THEMES.length);
+                return THEMES[randomIndex];
+            });
+            
+            // 本地持久化存储：教师等级、课时费基数
+            const [teacherLevel, setTeacherLevel] = useState(localStorage.getItem('lms_teacher_level') || '初级 2 级');
+            const [classFeeBase, setClassFeeBase] = useState(Number(localStorage.getItem('lms_class_fee_base')) || 8);
+            const [avatar, setAvatar] = useState(localStorage.getItem('lms_user_avatar') || '🦁');
+            
+            // 新增：语录状态
+            const [quotes, setQuotes] = useState(() => {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('lms_quotes'));
+                    return (saved && saved.length > 0) ? saved : DEFAULT_QUOTES;
+                } catch(e) { return DEFAULT_QUOTES; }
+            });
+
+            useEffect(() => { localStorage.setItem('lms_teacher_level', teacherLevel); }, [teacherLevel]);
+            useEffect(() => { localStorage.setItem('lms_class_fee_base', classFeeBase); }, [classFeeBase]);
+            useEffect(() => { localStorage.setItem('lms_user_avatar', avatar); }, [avatar]);
+            useEffect(() => { localStorage.setItem('lms_quotes', JSON.stringify(quotes)); }, [quotes]);
+
             const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
             const [attendanceMode, setAttendanceMode] = useState('scheduled');
+            const [loading, setLoading] = useState(false);
             
-            // 数据状态
             const [students, setStudents] = useState([]);
             const [courses, setCourses] = useState([]);
             const [followUps, setFollowUps] = useState([]);
             const [classGroups, setClassGroups] = useState([]);
-            
-            // ID生成器
-            const generateId = () => Math.random().toString(36).substr(2, 9);
-            
-            // 日期格式化 (修复时区问题: 使用本地时间)
+
+            const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
+            const [viewMode, setViewMode] = useState('week'); // 新增视图模式
+
+            const calendarDays = useMemo(() => {
+                const days = [];
+                let start = new Date(currentWeekStart);
+
+                if (viewMode === 'day') {
+                    days.push(new Date(start));
+                } else if (viewMode === 'week') {
+                    const day = start.getDay();
+                    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+                    start.setDate(diff);
+                    for(let i=0; i<7; i++){ days.push(new Date(start)); start.setDate(start.getDate()+1); }
+                } else if (viewMode === 'month') {
+                    // 月视图：固定显示 6 行 7 列 = 42 天
+                    start.setDate(1); // 当月1号
+                    const dayOfWeek = start.getDay();
+                    const offset = (dayOfWeek + 6) % 7; // 调整到周一开头
+                    start.setDate(start.getDate() - offset);
+                    for(let i=0; i<42; i++) { days.push(new Date(start)); start.setDate(start.getDate()+1); }
+                }
+                return days;
+            }, [currentWeekStart, viewMode]);
+
+            const changeWeek = (offset) => {
+                const newDate = new Date(currentWeekStart);
+                if (viewMode === 'day') newDate.setDate(newDate.getDate() + offset);
+                else if (viewMode === 'week') newDate.setDate(newDate.getDate() + offset * 7);
+                else if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + offset);
+                setCurrentWeekStart(newDate);
+            };
+
             const formatDate = (date) => {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -169,53 +1163,45 @@
                 return `${year}-${month}-${day}`;
             };
 
-            // 初始化加载 (带异常处理)
-            useEffect(() => {
-                const safeParse = (key) => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; } };
-                setStudents(safeParse('lms_students'));
-                setCourses(safeParse('lms_courses'));
-                setFollowUps(safeParse('lms_followups'));
-                setClassGroups(safeParse('lms_class_groups'));
-                
-                const lsTheme = localStorage.getItem('lms_theme_id');
-                if (lsTheme) setTheme(THEMES.find(t => t.id === lsTheme) || THEMES[0]);
-                
-                const lsMode = localStorage.getItem('lms_attendance_mode');
-                if (lsMode) setAttendanceMode(lsMode);
-            }, []);
-
-            // 数据持久化 (自动保存到 LocalStorage)
-            useEffect(() => { localStorage.setItem('lms_students', JSON.stringify(students)); }, [students]);
-            useEffect(() => { localStorage.setItem('lms_courses', JSON.stringify(courses)); }, [courses]);
-            useEffect(() => { localStorage.setItem('lms_followups', JSON.stringify(followUps)); }, [followUps]);
-            useEffect(() => { localStorage.setItem('lms_class_groups', JSON.stringify(classGroups)); }, [classGroups]);
-
-            const handleThemeChange = (t) => { setTheme(t); localStorage.setItem('lms_theme_id', t.id); setIsThemeModalOpen(false); };
-            const handleAttendanceModeChange = (m) => { setAttendanceMode(m); localStorage.setItem('lms_attendance_mode', m); };
-
-            // 周历状态
-            const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
-            const weekDays = useMemo(() => {
-                const days = [];
-                let start = new Date(currentWeekStart);
-                const day = start.getDay();
-                // 调整为周一作为开始 (0=周日, 1=周一...)
-                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                start.setDate(diff);
-                for(let i=0; i<7; i++){ 
-                    days.push(new Date(start)); 
-                    start.setDate(start.getDate()+1); 
+            // CRUD Helpers
+            const lcAdd = async (className, data) => {
+                if (typeof AV === 'undefined' || !window.isLCReady) {
+                    addToast("云端服务未连接，请刷新重试", "error");
+                    return false;
                 }
-                return days;
-            }, [currentWeekStart]);
-
-            const changeWeek = (offset) => {
-                const newDate = new Date(currentWeekStart);
-                newDate.setDate(newDate.getDate() + offset * 7);
-                setCurrentWeekStart(newDate);
+                try {
+                    const Obj = AV.Object.extend(className);
+                    const obj = new Obj();
+                    Object.keys(data).forEach(k => {
+                        if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return;
+                        obj.set(k, data[k]);
+                    });
+                    await obj.save();
+                    await fetchAll(); 
+                    return true;
+                } catch (e) { 
+                    addToast("保存失败: " + e.message, "error"); 
+                    return false; 
+                }
+            };
+            const lcUpdate = async (className, id, data) => {
+                if (typeof AV === 'undefined' || !window.isLCReady) return false;
+                try {
+                    const obj = AV.Object.createWithoutData(className, id);
+                    Object.keys(data).forEach(k => {
+                        if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return;
+                        obj.set(k, data[k]);
+                    });
+                    await obj.save();
+                    await fetchAll(); 
+                    return true;
+                } catch (e) { addToast("更新失败: " + e.message, "error"); return false; }
+            };
+            const lcDelete = async (className, id) => {
+                if (typeof AV === 'undefined' || !window.isLCReady) return false;
+                try { const obj = AV.Object.createWithoutData(className, id); await obj.destroy(); await fetchAll(); return true; } catch (e) { addToast("删除失败: " + e.message, "error"); return false; }
             };
 
-            // 导出 CSV 辅助函数
             const exportToCSV = (filename, rows) => {
                 try {
                     const processRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
@@ -224,425 +1210,149 @@
                     link.href = encodeURI(csvContent);
                     link.download = filename;
                     document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    link.click(); document.body.removeChild(link);
                     addToast("导出成功", "success");
-                } catch (e) {
-                    addToast("导出失败", "error");
-                }
+                } catch (e) { addToast("导出失败", "error"); }
             };
 
-            // --- 模块 1: 学员管理 ---
-            const StudentManager = () => {
-                const [isAddOpen, setIsAddOpen] = useState(false);
-                const [newStudent, setNewStudent] = useState({ gender: '男' });
-                const [searchTerm, setSearchTerm] = useState('');
-                
-                const handleSave = () => {
-                    if (!newStudent.name) return addToast("请填写姓名", "error");
-                    if (newStudent.id) {
-                        setStudents(prev => prev.map(s => s.id === newStudent.id ? newStudent : s));
-                    } else {
-                        setStudents(prev => [...prev, { ...newStudent, id: generateId() }]);
-                    }
-                    setIsAddOpen(false); setNewStudent({ gender: '男' });
-                    addToast("保存成功", "success");
-                };
-                const handleDelete = (id) => { if(confirm('确认删除该学员?')) { setStudents(prev => prev.filter(s => s.id !== id)); addToast("已删除", "info"); }};
-                
-                const filteredStudents = (students || []).filter(s => s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-                return (
-                    <div className="p-4 space-y-4 pb-24 md:pb-4 pt-16 md:pt-4">
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-                            <h2 className="text-xl font-bold text-gray-800">学员管理</h2>
-                            <div className="flex gap-2 w-full md:w-auto">
-                                <div className="relative flex-1 md:w-64">
-                                    <input className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="搜索姓名..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                    <div className="absolute left-3 top-2.5 text-gray-400"><LucideIcon name="Search" size={16} /></div>
-                                </div>
-                                <button onClick={() => { setNewStudent({gender:'男'}); setIsAddOpen(true); }} className={`bg-${theme.primary}-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm shadow hover:bg-${theme.primary}-700 active:scale-95 transition-all`}>
-                                    <LucideIcon name="Plus" size={16} /> 添加
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-lg shadow-sm overflow-x-auto border border-gray-200">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left text-xs font-medium text-gray-500">姓名</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500">性别</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500">年龄</th><th className="px-6 py-3 text-right text-xs font-medium text-gray-500">操作</th></tr></thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredStudents.length > 0 ? filteredStudents.map(s => (
-                                        <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{s.name}</td><td className="px-6 py-4 text-gray-600">{s.gender}</td><td className="px-6 py-4 text-gray-600">{s.age}</td>
-                                            <td className="px-6 py-4 text-right"><button onClick={() => {setNewStudent(s); setIsAddOpen(true)}} className={`text-${theme.primary}-600 mr-3 text-sm hover:underline`}>编辑</button><button onClick={() => handleDelete(s.id)} className="text-red-500 text-sm hover:underline">删除</button></td>
-                                        </tr>
-                                    )) : <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-400">未找到相关学员</td></tr>}
-                                </tbody>
-                            </table>
-                        </div>
-                        <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title={newStudent.id ? "编辑学员" : "添加学员"}>
-                            <div className="space-y-4">
-                                <div><label className="text-xs font-bold text-gray-500">姓名</label><input className="w-full border p-2 rounded mt-1" placeholder="输入姓名" value={newStudent.name||''} onChange={e=>setNewStudent({...newStudent, name:e.target.value})} /></div>
-                                <div className="flex gap-4">
-                                    <div className="flex-1"><label className="text-xs font-bold text-gray-500">性别</label><select className="w-full border p-2 rounded mt-1 bg-white" value={newStudent.gender||'男'} onChange={e=>setNewStudent({...newStudent, gender:e.target.value})}><option>男</option><option>女</option></select></div>
-                                    <div className="flex-1"><label className="text-xs font-bold text-gray-500">年龄</label><input className="w-full border p-2 rounded mt-1" type="number" placeholder="0" value={newStudent.age||''} onChange={e=>setNewStudent({...newStudent, age:e.target.value})} /></div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between mb-1"><label className="text-xs font-bold text-gray-500">备注信息</label></div>
-                                    <textarea className="w-full border p-2 rounded h-24 text-sm" placeholder="输入学员情况..." value={newStudent.notes||''} onChange={e=>setNewStudent({...newStudent, notes:e.target.value})}></textarea>
-                                </div>
-                                <button onClick={handleSave} className={`w-full bg-${theme.primary}-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-${theme.primary}-700 transition-colors shadow-md`}>保存学员信息</button>
-                            </div>
-                        </Modal>
-                    </div>
-                )
-            };
-
-            // --- 模块 2: 课程管理 ---
-            const CourseSchedule = () => {
-                const [selectedCourse, setSelectedCourse] = useState(null);
-                const [isEditOpen, setIsEditOpen] = useState(false);
-                const [newCourse, setNewCourse] = useState({});
-
-                const handleCellClick = (dStr, dayIndex) => {
-                    setNewCourse({ dateStr: dStr, dayOfWeek: dayIndex, startTime: '09:00', endTime: '10:00', studentIds: [], tasks: {}, attendance: {} });
-                    setSelectedCourse(null); setIsEditOpen(true);
-                };
-                const saveCourse = () => {
-                    if (!newCourse.className) return addToast("请填写课程名称", "error");
-                    if (selectedCourse) {
-                         setCourses(prev => prev.map(c => c.id === selectedCourse.id ? newCourse : c));
-                    } else {
-                         setCourses(prev => [...prev, { ...newCourse, id: generateId() }]);
-                    }
-                    setIsEditOpen(false);
-                    addToast("排课成功", "success");
-                };
-                const deleteCourse = () => { if(confirm("删除课程?")) { setCourses(prev => prev.filter(c => c.id !== selectedCourse.id)); setIsEditOpen(false); addToast("课程已删除", "info"); }};
-                
-                const toggleAtt = (sid, status) => {
-                    setNewCourse(prev => {
-                        const att = prev.attendance || {};
-                        const cur = att[sid] || {};
-                        return {...prev, attendance: {...att, [sid]: {...cur, studentId: sid, status, isMadeUp: false}}};
-                    });
-                };
-                const toggleTask = (t) => {
-                    setNewCourse(prev => {
-                        const tasks = prev.tasks || {};
-                        return {...prev, tasks: {...tasks, [t]: !tasks[t]}};
-                    });
-                };
-                
-                const handleStudentSelect = (e) => {
-                    const sid = e.target.value;
-                    if(sid && !newCourse.studentIds?.includes(sid)) {
-                        setNewCourse(prev => ({...prev, studentIds: [...(prev.studentIds||[]), sid]}));
-                    }
-                    e.target.value = "";
-                };
-
-                const handleClassGroupSelect = (e) => {
-                    const gid = e.target.value;
-                    const g = classGroups.find(x => x.id === gid);
-                    if(g) {
-                        setNewCourse(prev => {
-                            const currentIds = prev.studentIds || [];
-                            const newIds = [...new Set([...currentIds, ...(g.studentIds||[])])];
-                            return {...prev, studentIds: newIds};
-                        });
-                        addToast(`已导入 ${g.name}`, "success");
-                    }
-                    e.target.value = "";
-                };
-
-                const weekCourses = courses.filter(c => c.dateStr >= formatDate(weekDays[0]) && c.dateStr <= formatDate(weekDays[6]));
-
-                return (
-                    <div className="flex flex-col h-full overflow-hidden">
-                        <div className="flex justify-between items-center p-4 bg-white border-b shadow-sm z-10 pt-16 md:pt-4">
-                            <h2 className="text-lg font-bold text-gray-800">课程表</h2>
-                            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1 border border-gray-200">
-                                <button onClick={()=>changeWeek(-1)} className="p-1 rounded hover:bg-white hover:shadow-sm transition-all"><LucideIcon name="ChevronLeft" size={20}/></button>
-                                <span className="text-xs px-2 font-medium text-gray-600">{formatDate(weekDays[0]).slice(5)} - {formatDate(weekDays[6]).slice(5)}</span>
-                                <button onClick={()=>changeWeek(1)} className="p-1 rounded hover:bg-white hover:shadow-sm transition-all"><LucideIcon name="ChevronRight" size={20}/></button>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-auto bg-gray-50 p-2 pb-24 md:pb-4">
-                            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-                                {weekDays.map((d, i) => {
-                                    const dStr = formatDate(d);
-                                    const dayCourses = weekCourses.filter(c => c.dateStr === dStr).sort((a,b)=>a.startTime.localeCompare(b.startTime));
-                                    const isToday = dStr === formatDate(new Date());
-                                    return (
-                                        <div key={dStr} onClick={()=>handleCellClick(dStr, i)} className={`min-h-[120px] md:min-h-[400px] border rounded-xl p-2 transition-all cursor-pointer hover:border-${theme.primary}-300 ${isToday ? `bg-${theme.primary}-50 border-${theme.primary}-200 ring-1 ring-${theme.primary}-200` : 'bg-white border-gray-200 hover:shadow-sm'}`}>
-                                            <div className={`text-center py-1 border-b mb-2 text-xs font-bold ${isToday ? `text-${theme.primary}-600` : 'text-gray-500'}`}>
-                                                <div className="flex justify-between md:justify-center px-1">
-                                                    <span>周{['日','一','二','三','四','五','六'][d.getDay()]}</span>
-                                                    <span className="opacity-75">{dStr.slice(5)}</span>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                            {dayCourses.map(c => (
-                                                <div key={c.id} onClick={(e)=>{e.stopPropagation(); setSelectedCourse(c); setNewCourse(c); setIsEditOpen(true);}} className={`bg-white border-l-4 border-${theme.primary}-500 shadow-sm p-2 rounded text-xs hover:shadow-md transition-shadow group`}>
-                                                    <div className="font-bold truncate text-gray-800">{c.className}</div>
-                                                    <div className="text-gray-500 mt-0.5 flex items-center gap-1"><LucideIcon name="Clock" size={10}/> {c.startTime}-{c.endTime}</div>
-                                                    <div className="mt-1 pt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400 group-hover:text-${theme.primary}-500"><LucideIcon name="Users" size={10}/> {c.studentIds?.length||0}人</div>
-                                                </div>
-                                            ))}
-                                            </div>
-                                            {dayCourses.length===0 && <div className="text-center text-gray-300 mt-8 opacity-50 hover:opacity-100 transition-opacity"><LucideIcon name="Plus" size={24} className="mx-auto"/></div>}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                        <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="col-span-2 md:col-span-1">
-                                        <label className="text-xs font-bold text-gray-500">课程名称</label>
-                                        <input className="w-full border p-2 rounded mt-1" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} />
-                                    </div>
-                                    <div className="col-span-2 md:col-span-1 flex flex-col">
-                                         <div className="flex justify-between mb-1"><label className="text-xs font-bold text-gray-500">内容</label></div>
-                                        <input className="w-full border p-2 rounded flex-1" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} />
-                                    </div>
-                                    <div><label className="text-xs font-bold text-gray-500">开始</label><input type="time" className="w-full border p-2 rounded mt-1" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div>
-                                    <div><label className="text-xs font-bold text-gray-500">结束</label><input type="time" className="w-full border p-2 rounded mt-1" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div>
-                                </div>
-                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                    <div className="flex gap-2 mb-3">
-                                        <select className="border p-1.5 rounded text-xs flex-1 bg-white" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select>
-                                        <select className="border p-1.5 rounded text-xs flex-1 bg-white" onChange={handleStudentSelect}><option value="">+ 添加学员</option>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white border px-2 py-1 rounded text-xs flex items-center gap-1 shadow-sm">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold">×</button></span> : null; })}</div>
-                                </div>
-                                {selectedCourse && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                        <div className="border p-3 rounded-lg bg-orange-50 border-orange-100">
-                                            <div className="font-bold mb-2 text-orange-800 flex items-center gap-1"><LucideIcon name="ClipboardList" size={14}/> 教师任务</div>
-                                            <div className="space-y-2">
-                                            {['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (
-                                                <label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 p-1 rounded"><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> {k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</label>
-                                            ))}
-                                            </div>
-                                        </div>
-                                        <div className="border p-3 rounded-lg bg-blue-50 border-blue-100">
-                                            <div className="font-bold mb-2 text-blue-800 flex items-center gap-1"><LucideIcon name="UserCheck" size={14}/> 考勤打卡</div>
-                                            <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
-                                                {newCourse.studentIds?.map(sid => {
-                                                    const st = students.find(s=>s.id===sid);
-                                                    const status = newCourse.attendance?.[sid]?.status;
-                                                    return st ? <div key={sid} className="flex justify-between items-center p-1 hover:bg-blue-100/50 rounded"><span>{st.name}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${status==='present'?'bg-green-500 text-white border-green-600':'bg-white text-gray-500 hover:bg-gray-50'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${status==='absent'?'bg-red-500 text-white border-red-600':'bg-white text-gray-500 hover:bg-gray-50'}`}>缺</button></div></div> : null;
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex gap-3 pt-2">
-                                    {selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-4 rounded hover:bg-red-50">删除课程</button>}
-                                    <div className="flex-1"></div>
-                                    <button onClick={() => setIsEditOpen(false)} className="text-gray-500 px-4 rounded">取消</button>
-                                    <button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-6 py-2 rounded-lg shadow hover:bg-${theme.primary}-700 transition-colors`}>保存</button>
-                                </div>
-                            </div>
-                        </Modal>
-                    </div>
-                );
-            };
-
-            // --- 模块 3: 班级管理 ---
-            const ClassGroupManager = () => {
-                const [isEdit, setIsEdit] = useState(false);
-                const [group, setGroup] = useState({});
-                const save = () => { 
-                    if(group.name){ 
-                        if(group.id) {
-                            setClassGroups(prev => prev.map(g => g.id === group.id ? group : g));
-                        } else {
-                            setClassGroups(prev => [...prev, {...group, id: generateId()}]);
+            const fetchAll = useCallback(async () => {
+                if (typeof AV === 'undefined' || !window.isLCReady) return;
+                setLoading(true);
+                try {
+                    const fetchTableSafe = async (className) => {
+                        try {
+                            const q = new AV.Query(className);
+                            q.limit(1000); 
+                            const results = await q.find();
+                            // 修改点：映射 createdAt，用于统计学员增长
+                            return results.map(item => ({...item.attributes, id: item.id, createdAt: item.createdAt, updatedAt: item.updatedAt}));
+                        } catch (err) {
+                            // 关键修复: 如果是 101 错误(Class not found)，说明是新账号，直接返回空数组，不要报错
+                            if (err.code === 101) return [];
+                            console.warn(`Fetch ${className} failed:`, err);
+                            return []; // 容错处理
                         }
-                        setIsEdit(false); setGroup({}); addToast("保存成功", "success"); 
-                    }
-                };
-                const deleteGroup = (id) => { if(confirm('删除?')) { setClassGroups(prev => prev.filter(g => g.id !== id)); } };
+                    };
+                    // 这里不使用 Promise.all，改为串行，防止一个失败全部挂掉
+                    const s = await fetchTableSafe('Student');
+                    const c = await fetchTableSafe('Course');
+                    const g = await fetchTableSafe('ClassGroup');
+                    const f = await fetchTableSafe('FollowUp');
+                    
+                    setStudents(s); setCourses(c); setClassGroups(g); setFollowUps(f);
+                } catch (error) { 
+                    console.error("Fetch error", error); 
+                    // 不再弹窗报错，以免打扰用户
+                } finally { setLoading(false); }
+            }, [addToast]);
 
-                return (
-                    <div className="p-4 space-y-4 pb-24 md:pb-4 pt-16 md:pt-4">
-                        <div className="flex justify-between items-center"><h2 className="text-xl font-bold text-gray-800">班级管理</h2><button onClick={()=>{setGroup({name:'', studentIds:[]}); setIsEdit(true)}} className={`bg-${theme.primary}-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm shadow hover:bg-${theme.primary}-700`}><LucideIcon name="Plus" size={16}/> 新建</button></div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{classGroups.map(g=><div key={g.id} className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow"><div className="font-bold flex justify-between text-gray-800 mb-2">{g.name} <div className="flex gap-2"><button onClick={()=>{setGroup(g); setIsEdit(true)}} className={`text-${theme.primary}-600 text-xs`}><LucideIcon name="Edit" size={14}/></button><button onClick={()=>{deleteGroup(g.id)}} className="text-red-500 text-xs"><LucideIcon name="Trash2" size={14}/></button></div></div><div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">{g.studentIds?.length||0} 人</div></div>)}</div>
-                        <Modal isOpen={isEdit} onClose={()=>setIsEdit(false)} title="编辑班级">
-                            <div className="space-y-4">
-                                <input className="border p-2 rounded w-full" placeholder="班级名" value={group.name||''} onChange={e=>setGroup({...group, name:e.target.value})} />
-                                <div className="max-h-48 overflow-y-auto border p-2 rounded grid grid-cols-2 gap-2 bg-gray-50">
-                                    {students.map(s=><label key={s.id} className="flex items-center gap-2 text-xs bg-white p-1 rounded border"><input type="checkbox" checked={group.studentIds?.includes(s.id)||false} onChange={()=>{
-                                        const ids = group.studentIds||[];
-                                        setGroup({...group, studentIds: ids.includes(s.id)?ids.filter(i=>i!==s.id):[...ids, s.id]});
-                                    }}/>{s.name}</label>)}
-                                </div>
-                                <button onClick={save} className={`w-full bg-${theme.primary}-600 text-white py-2 rounded`}>保存</button>
-                            </div>
-                        </Modal>
-                    </div>
-                )
-            }
-
-            // --- 模块 4: 回访管理 ---
-            const FollowUpManager = () => {
-                const currentMonth = formatDate(new Date()).slice(0,7);
-                const total = students.length * 2;
-                const done = followUps.filter(f => f.monthStr === currentMonth).reduce((s,r)=>s+r.count,0);
+            useEffect(() => {
+                const lsTheme = localStorage.getItem('lms_theme_id');
+                // if (lsTheme) setTheme(THEMES.find(t => t.id === lsTheme) || THEMES[0]);
                 
-                const toggle = (sid, idx) => {
-                    setFollowUps(prev => {
-                        const ex = prev.find(f => f.studentId === sid && f.monthStr === currentMonth);
-                        const count = ex ? ex.count : 0;
-                        const newCount = (idx + 1 === count) ? idx : idx + 1;
-                        const other = prev.filter(f => !(f.studentId === sid && f.monthStr === currentMonth));
-                        return [...other, { id: ex?.id || generateId(), studentId: sid, monthStr: currentMonth, count: newCount }];
-                    });
-                };
+                const lsMode = localStorage.getItem('lms_attendance_mode');
+                if (lsMode) setAttendanceMode(lsMode);
                 
-                const exportCSV = () => {
-                    const rows = students.map(s => {
-                        const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth);
-                        return [s.name, currentMonth, rec?rec.count:0];
-                    });
-                    exportToCSV(`回访_${currentMonth}.csv`, [['姓名','月份','次数'], ...rows]);
-                };
+                // 延迟一丢丢加载数据，确保 SDK 初始化完毕
+                setTimeout(() => {
+                    if(window.isLCReady) fetchAll();
+                }, 500);
+            }, [fetchAll, addToast]);
 
-                return (
-                    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 pb-24 md:pb-6 pt-16 md:pt-4">
-                        <div className="flex justify-between items-center"><h2 className="text-xl font-bold text-gray-800">回访管理 ({currentMonth})</h2><button onClick={exportCSV} className={`text-${theme.primary}-600 text-sm flex items-center gap-1 hover:bg-${theme.primary}-50 px-2 py-1 rounded transition-colors`}><LucideIcon name="Download" size={16}/> 导出</button></div>
-                        <div className={`bg-gradient-to-r from-${theme.primary}-500 to-${theme.primary}-700 text-white p-5 rounded-xl shadow-lg flex justify-between text-center`}>
-                            <div className="flex-1"><div className="text-xs opacity-75 mb-1">目标</div><div className="text-3xl font-bold">{total}</div></div>
-                            <div className="flex-1"><div className="text-xs opacity-75 mb-1">完成</div><div className="text-3xl font-bold">{done}</div></div>
-                            <div className="flex-1"><div className="text-xs opacity-75 mb-1">进度</div><div className="text-3xl font-bold text-yellow-300">{total>0?Math.round(done/total*100):0}%</div></div>
-                        </div>
-                        <div className="bg-white rounded-lg shadow-sm overflow-x-auto border border-gray-200">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">学员</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">记录 (2次/人)</th></tr></thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {students.map(s => {
-                                        const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth);
-                                        const c = rec?.count||0;
-                                        return <tr key={s.id} className="hover:bg-gray-50"><td className="px-6 py-3 font-medium text-gray-700">{s.name}</td><td className="px-6 py-3 flex gap-3">{[0,1,2].map(i=><div key={i} onClick={()=>toggle(s.id, i)} className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all ${i<c?`bg-green-500 text-white shadow-md scale-105`:'bg-gray-100 text-gray-300 hover:bg-gray-200'}`}><LucideIcon name="CheckSquare" size={16}/></div>)}</td></tr>
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )
-            }
+            const handleThemeChange = (t) => { 
+                setTheme(t); 
+                localStorage.setItem('lms_theme_id', t.id); 
+                setIsThemeModalOpen(false); 
+                if (t.isDark) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            };
+            
+            const handleAttendanceModeChange = (m) => { setAttendanceMode(m); localStorage.setItem('lms_attendance_mode', m); };
 
-            // --- 模块 5: 考勤管理 ---
-            const AttendanceManager = () => {
-                const currentMonth = formatDate(new Date()).slice(0,7);
-                const week = Math.ceil(new Date().getDate()/7);
-                
-                let target = 0;
-                if(attendanceMode === 'estimated') target = students.length * week;
-                else courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) target += (c.studentIds?.length||0); });
+            // 构建全局 Context 数据对象
+            const contextValue = {
+                students, setStudents,
+                courses, setCourses,
+                followUps, setFollowUps,
+                classGroups, setClassGroups,
+                theme, setTheme,
+                activeTab, setActiveTab,
+                attendanceMode, handleAttendanceModeChange,
+                loading, setLoading,
+                currentWeekStart, setCurrentWeekStart,
+                weekDays: calendarDays, changeWeek,
+                calendarDays,
+                formatDate,
+                viewMode, setViewMode,
+                teacherLevel, setTeacherLevel,
+                classFeeBase, setClassFeeBase,
+                fetchAll, exportToCSV,
+                lcAdd, lcUpdate, lcDelete,
+                avatar, setAvatar,
+                quotes, setQuotes
+            };
 
-                let actual = 0;
-                const absents = [];
-                courses.forEach(c => {
-                    if(c.dateStr.startsWith(currentMonth)) {
-                        Object.values(c.attendance||{}).forEach(a => {
-                            if(a.status==='present' || (a.status==='absent' && a.isMadeUp)) actual++;
-                            if(a.status==='absent' && !a.isMadeUp) absents.push({cname: c.className, date: c.dateStr, sid: a.studentId, cid: c.id});
-                        });
-                    }
-                });
-                const rate = target>0 ? (actual/target)*100 : 0;
-                
-                const makeup = (cid, sid) => {
-                    if(confirm("确认补课?")) {
-                        setCourses(prev => prev.map(c => {
-                            if (c.id === cid) {
-                                const att = c.attendance[sid];
-                                return {...c, attendance: {...c.attendance, [sid]: {...att, isMadeUp: true}}};
-                            }
-                            return c;
-                        }));
-                        addToast("补课已记录", "success");
-                    }
-                }
-
-                const exportAtt = () => {
-                    const rows = [];
-                    courses.forEach(c=>{
-                        if(c.dateStr.startsWith(currentMonth)) {
-                            (c.studentIds||[]).forEach(sid=>{
-                                const s = students.find(x=>x.id===sid);
-                                const a = c.attendance?.[sid];
-                                rows.push([c.dateStr, c.className, s?.name||'未知', a?.status==='present'?'到':a?.status==='absent'?'缺':'未记', a?.isMadeUp?'是':'否']);
-                            })
-                        }
-                    });
-                    exportToCSV(`考勤_${currentMonth}.csv`, [['日期','课程','姓名','状态','已补课'],...rows]);
-                };
-
-                return (
-                    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6 md:space-y-8 pb-24 md:pb-6 pt-16 md:pt-4">
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-                            <h2 className="text-xl font-bold text-gray-800">考勤看板 ({currentMonth})</h2>
-                            <div className="flex gap-2 bg-white p-1 rounded-lg shadow-sm border border-gray-200">
-                                <button onClick={()=>{handleAttendanceModeChange('estimated'); addToast("已切换至预估模式")}} className={`px-3 py-1.5 text-xs rounded-md transition-all ${attendanceMode==='estimated'?`bg-${theme.primary}-100 text-${theme.primary}-700 font-bold shadow-sm`:'text-gray-500 hover:bg-gray-50'}`}>预估模式</button>
-                                <button onClick={()=>{handleAttendanceModeChange('scheduled'); addToast("已切换至精准模式")}} className={`px-3 py-1.5 text-xs rounded-md transition-all ${attendanceMode==='scheduled'?`bg-${theme.primary}-100 text-${theme.primary}-700 font-bold shadow-sm`:'text-gray-500 hover:bg-gray-50'}`}>精准模式</button>
-                                <div className="w-px bg-gray-200 mx-1"></div>
-                                <button onClick={exportAtt} className="px-2 text-gray-500 hover:text-gray-700"><LucideIcon name="Download" size={16}/></button>
-                            </div>
-                        </div>
-                        <div className={`p-6 rounded-xl shadow-lg text-white grid grid-cols-3 gap-4 text-center relative overflow-hidden ${rate>=94?'bg-gradient-to-br from-green-500 to-green-700':'bg-gradient-to-br from-red-500 to-red-700'}`}>
-                            <div className="absolute right-0 top-0 p-4 opacity-10"><LucideIcon name={rate>=94?"TrendingUp":"AlertCircle"} size={100}/></div>
-                            <div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">本月目标</div><div className="text-3xl font-bold">{target}</div></div>
-                            <div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">实际出勤</div><div className="text-3xl font-bold">{actual}</div></div>
-                            <div className="z-10"><div className="text-xs opacity-80 mb-1 uppercase tracking-wide">达标率 (94%)</div><div className="text-3xl font-bold flex items-center justify-center gap-1">{rate.toFixed(1)}%</div></div>
-                        </div>
-                        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-                            <div className="p-3 font-bold text-gray-600 text-xs bg-gray-50 border-b border-gray-200 flex items-center gap-2"><LucideIcon name="AlertCircle" size={14} className="text-red-500"/> 缺勤待补课列表</div>
-                            <table className="min-w-full divide-y divide-gray-100">
-                                <tbody className="text-sm">
-                                    {absents.map((r,i) => {
-                                        const s = students.find(x=>x.id===r.sid);
-                                        return <tr key={i} className="hover:bg-gray-50 transition-colors"><td className="px-4 py-3 font-medium text-gray-800">{s?.name}</td><td className="px-4 py-3 text-gray-500">{r.cname}</td><td className="px-4 py-3 text-gray-400 text-xs">{r.date}</td><td className="px-4 py-3 text-right"><button onClick={()=>makeup(r.cid, r.sid)} className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold hover:bg-green-200 transition-colors shadow-sm border border-green-200">补课</button></td></tr>
-                                    })}
-                                    {absents.length===0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400 italic">🎉 太棒了！本月所有缺勤已处理完毕。</td></tr>}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )
-            }
-
-            // --- Layout ---
             return (
-                <div className="flex h-screen bg-gray-100 flex-col md:flex-row overflow-hidden font-sans">
-                    <div className={`hidden md:flex w-64 bg-gradient-to-b from-${theme.sidebar}-800 to-${theme.sidebar}-950 text-white flex-col shadow-2xl flex-shrink-0 z-20`}>
-                        <div className="p-6 text-2xl font-bold border-b border-white/10 flex items-center gap-3 tracking-tight"><div className={`w-8 h-8 rounded-lg bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}>L</div> 云端教务</div>
-                        <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">{['schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>setActiveTab(k)} className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-white/15 text-white shadow-lg backdrop-blur-sm font-medium`:'text-gray-400 hover:bg-white/5 hover:text-white'}`}><LucideIcon name={k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}</nav>
-                        <div className="p-4 border-t border-white/10"><div className="mt-3 text-[10px] text-center text-gray-500 font-mono flex justify-center items-center gap-1.5"><span className={`w-2 h-2 rounded-full bg-green-500`}></span> 本地运行中</div></div>
+                <AppDataContext.Provider value={contextValue}>
+                    <div className="flex h-screen bg-gray-100 dark:bg-slate-900 flex-col md:flex-row overflow-hidden font-sans transition-colors duration-300">
+                        <div className={`hidden md:flex w-64 glass-sidebar flex-col z-20`}>
+                            <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight">
+                                <div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white logo-breathe text-2xl`}>{avatar}</div>
+                                <span className="text-slate-800 dark:text-white">Veape Pro</span>
+                            </div>
+                            <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
+                                {['dashboard','schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>setActiveTab(k)} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm font-bold`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='dashboard'?'概览':k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}
+                                <div className="my-2 border-t border-gray-200/50 dark:border-white/10"></div>
+                                <button onClick={()=>setActiveTab('settings')} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab==='settings'?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name="Settings" size={18}/> 系统设置</button>
+                            </nav>
+                            <div className="p-4 border-t border-gray-200/50 dark:border-white/10">
+                                {loading ? <div className="text-center text-xs text-slate-400 flex justify-center gap-2"><div className="spinner w-3 h-3 border-slate-300 border-t-blue-500"></div> 同步中...</div> : <div className="mt-3 text-[10px] text-center text-slate-400 font-mono flex justify-center items-center gap-1.5 cursor-pointer hover:text-green-500 transition-colors" onClick={fetchAll} title="点击刷新"><span className={`w-2 h-2 rounded-full bg-green-500`}></span> LeanCloud 在线 <LucideIcon name="RefreshCw" size={10} /></div>}
+                            </div>
+                        </div>
+                        <div className="flex-1 flex flex-col overflow-hidden relative bg-white/50 dark:bg-slate-900/50">
+                            <div className="absolute top-2 right-2 z-10 flex gap-2 md:hidden"><button onClick={()=>setIsThemeModalOpen(true)} className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-md border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300"><LucideIcon name="Palette" size={18}/></button></div>
+                            <div className="hidden md:block absolute bottom-8 right-8 z-50"><button onClick={()=>setIsThemeModalOpen(true)} className="glass-panel p-3 rounded-full hover:scale-110 transition-transform flex items-center gap-2 text-slate-600 dark:text-slate-300 hover-jelly"><LucideIcon name="Palette" size={20}/><span className="font-medium text-sm">主题风格</span></button></div>
+                            <div className="flex-1 overflow-auto scroll-smooth"><div className="max-w-7xl mx-auto w-full h-full">
+                                {activeTab==='dashboard' && <Dashboard />}
+                                {activeTab==='schedule' && <CourseSchedule />}
+                                {activeTab==='groups' && <ClassGroupManager />}
+                                {activeTab==='students' && <StudentManager />}
+                                {activeTab==='followup' && <FollowUpManager />}
+                                {activeTab==='attendance' && <AttendanceManager />}
+                                {activeTab==='settings' && <SettingsManager />}
+                            </div></div>
+                        </div>
+                        <div className={`md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-gray-200 dark:border-slate-800 flex justify-around p-2 pb-safe z-50 shadow-lg overflow-x-auto`}>
+                            {['dashboard','schedule','groups','students','attendance','followup','settings'].map(k => (
+                                <button key={k} onClick={()=>setActiveTab(k)} className={`flex flex-col items-center p-2 rounded-xl min-w-[3.5rem] transition-all duration-300 ${activeTab===k?`text-${theme.primary}-600 dark:text-blue-400 bg-${theme.primary}-50 dark:bg-slate-800 scale-105`:'text-gray-400 dark:text-slate-500'}`}>
+                                    <LucideIcon name={
+                                        k==='dashboard'?'Home':
+                                        k==='schedule'?'Calendar':
+                                        k==='groups'?'Layers':
+                                        k==='students'?'Users':
+                                        k==='attendance'?'CheckSquare':
+                                        k==='followup'?'PhoneCall':
+                                        'Settings'
+                                    } size={20}/>
+                                    <span className="text-[10px] mt-1 font-medium scale-90">
+                                        {k==='dashboard'?'概览':
+                                         k==='schedule'?'排课':
+                                         k==='groups'?'班级':
+                                         k==='students'?'学员':
+                                         k==='attendance'?'考勤':
+                                         k==='followup'?'回访':
+                                         '设置'}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题"><div className="grid grid-cols-2 gap-3">{THEMES.map(t=><button key={t.id} onClick={()=>handleThemeChange(t)} className={`p-3 border rounded-xl flex gap-3 items-center ${theme.id===t.id?`bg-${t.primary}-50 border-${t.primary}-500 text-${t.primary}-700 ring-1 ring-${t.primary}-500 shadow-sm`:'hover:bg-gray-50 hover:border-gray-300'}`}><div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white`}></div>{t.name}</button>)}</div></Modal>
                     </div>
-                    <div className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/50">
-                        <div className="absolute top-2 right-2 z-10 flex gap-2 md:hidden"><button onClick={()=>setIsThemeModalOpen(true)} className="bg-white p-2 rounded-full shadow-md border border-gray-100 text-gray-600"><LucideIcon name="Palette" size={18}/></button></div>
-                        <div className="hidden md:block absolute bottom-8 right-8 z-50"><button onClick={()=>setIsThemeModalOpen(true)} className="bg-white p-3 rounded-full shadow-lg border text-gray-600 hover:scale-110 transition-transform flex items-center gap-2"><LucideIcon name="Palette" size={20}/><span className="font-medium text-sm">主题风格</span></button></div>
-                        <div className="flex-1 overflow-auto scroll-smooth"><div className="max-w-7xl mx-auto w-full h-full">{activeTab==='schedule' && <CourseSchedule />}{activeTab==='groups' && <ClassGroupManager />}{activeTab==='students' && <StudentManager />}{activeTab==='followup' && <FollowUpManager />}{activeTab==='attendance' && <AttendanceManager />}</div></div>
-                    </div>
-                    <div className={`md:hidden fixed bottom-0 w-full bg-gradient-to-r from-${theme.sidebar}-900 to-${theme.sidebar}-950 text-white flex justify-around p-2 pb-safe z-50 shadow-lg border-t border-white/5`}>{['schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>setActiveTab(k)} className={`flex flex-col items-center p-2 rounded-xl transition-all duration-300 ${activeTab===k?`text-${theme.primary}-300 bg-white/10 scale-105`:'text-gray-500'}`}><LucideIcon name={k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={20}/><span className="text-[10px] mt-1 font-medium">{k==='schedule'?'排课':k==='groups'?'班级':k==='students'?'学员':k==='followup'?'回访':'考勤'}</span></button>)}</div>
-                    <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题"><div className="grid grid-cols-2 gap-3">{THEMES.map(t=><button key={t.id} onClick={()=>handleThemeChange(t)} className={`p-3 border rounded-xl flex gap-3 items-center ${theme.id===t.id?`bg-${t.primary}-50 border-${t.primary}-500 text-${t.primary}-700 ring-1 ring-${t.primary}-500 shadow-sm`:'hover:bg-gray-50 hover:border-gray-300'}`}><div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white`}></div>{t.name}</button>)}</div></Modal>
-                </div>
+                </AppDataContext.Provider>
             );
         }
 
-        const App = () => {
-            return (
-                <ToastProvider>
-                    <SchoolSystem />
-                </ToastProvider>
-            );
-        };
-
+        const App = () => { return <ToastProvider><SchoolSystem /></ToastProvider>; };
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
