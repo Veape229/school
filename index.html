@@ -203,6 +203,44 @@
         html.dark .toggle-switch label {
             background-color: #475569; /* slate-600 */
         }
+
+        /* --- 主题扩散过渡样式 (新增) --- */
+        .theme-transition-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000; /* 确保在最顶层 */
+            pointer-events: none; /* 默认不可交互 */
+        }
+
+        /* 扩散效果的圆形元素 */
+        .ripple-circle {
+            position: absolute;
+            width: 0px;
+            height: 0px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%); /* 居中于定位点 */
+            pointer-events: all; /* 动画时可交互，防止用户快速重复点击 */
+            opacity: 0; /* 默认隐藏 */
+        }
+
+        /* 扩散动画 */
+        @keyframes ripple-expand {
+            0% {
+                width: 0px;
+                height: 0px;
+                opacity: 1; /* 动画开始时显示 */
+            }
+            100% {
+                /* 确保圆形足够大以覆盖任何屏幕 (对角线长度的 2-3 倍) */
+                width: 300vmax;
+                height: 300vmax;
+                opacity: 1;
+            }
+        }
+        /* --- 主题扩散过渡样式 (结束) --- */
     </style>
 </head>
 <body class="h-screen overflow-hidden selection:bg-indigo-200 selection:text-indigo-900 dark:selection:bg-indigo-500 dark:selection:text-white">
@@ -218,7 +256,10 @@
             { id: 'rose', name: '樱花粉', primary: 'rose', accent: 'pink' },
             { id: 'violet', name: '星云紫', primary: 'violet', accent: 'fuchsia' },
             { id: 'emerald', name: '森林绿', primary: 'emerald', accent: 'lime' },
-            { id: 'dark', name: '深邃黑', primary: 'slate', accent: 'indigo', isDark: true },
+            // 新增渐变色主题
+            { id: 'orange', name: '活力橙', primary: 'orange', accent: 'amber' },
+            { id: 'teal', name: '海洋青', primary: 'teal', accent: 'cyan' },
+            { id: 'indigo', name: '深海蓝', primary: 'indigo', accent: 'violet' },
         ];
         // 移除了 AVATARS 数组
         const DEFAULT_QUOTES = ["今天也是元气满满的一天！✨", "教育的本质是唤醒。🌱", "种一棵树最好的时间是十年前，其次是现在。🌲", "星光不问赶路人。⭐"];
@@ -330,6 +371,17 @@
             const [importing, setImporting] = useState(false);
             const [newQuote, setNewQuote] = useState(""); // 新语录输入状态
 
+            // 新增: 系统更新日志数据
+            const UPDATE_HISTORY = [
+                { version: "V1.0.5", date: "2025-12-05", changes: ["新增：主题切换动画效果。","优化：调整主题颜色，移除黑色主题，新增活力橙、海洋青和深海蓝主题。"] },
+                { version: "V1.0.4", date: "2025-12-04", changes: ["新增：排课及班级管理，添加学生搜索功能。", "优化：考勤目标计算逻辑（预估模式改为学生量*4）。", "修复：考勤管理中补课后课时扣除逻辑。"] },
+            	{ version: "V1.0.3", date: "2025-12-02", changes: ["新增：系统主题换色功能，系统版本更新记录卡片 ","优化：系统整体界面设计。"] },
+                { version: "V1.0.2", date: "2025-12-01", changes: ["新增：概览页支持隐藏今日收入。", "优化：学员管理列表按剩余课时升序排序。"] },
+                { version: "V1.0.1", date: "2025-11-29", changes: ["新增：个性化语录管理功能，收入计算功能。", "修复：周导航器在月视图下跳转错误。"] },
+                { version: "V1.0.0", date: "2025-11-29", changes: ["系统初始化，包含概览、课程、学员、班级、回访、考勤等核心功能。"] },
+            ];
+			
+
             // 监听主题变化以更新CSS变量，确保开关颜色正确
             useEffect(() => {
                 document.documentElement.style.setProperty('--primary-color', tailwind.config.theme.extend.colors[theme.primary]?.[600] || '#3b82f6');
@@ -352,7 +404,8 @@
 
             // 删除语录
             const handleDeleteQuote = (index) => {
-                if(confirm("确定删除这条语录吗？")) {
+                // IMPORTANT: Use custom modal instead of confirm()
+                if(window.confirm("确定删除这条语录吗？")) {
                     const newQuotes = [...quotes];
                     newQuotes.splice(index, 1);
                     setQuotes(newQuotes);
@@ -439,7 +492,7 @@
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
                         {/* 卡片 1: 基础设置 */}
                         <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
                             <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
@@ -495,10 +548,10 @@
                             </div>
                         </TiltCard>
 
-                        {/* 卡片 2: 个性化语录管理 (新增) */}
+                        {/* 卡片 2: 个性化语录管理 */}
                         <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
                             <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center shadow-inner`}><LucideIcon name="Quote" size={22}/></div>
+                                <div className="w-10 h-10 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center shadow-inner"><LucideIcon name="Quote" size={22}/></div>
                                 个性化语录
                             </h3>
                             <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
@@ -529,9 +582,32 @@
                                 </div>
                             </div>
                         </TiltCard>
+                        
+                        {/* 新增卡片 3: 版本更新记录 */}
+                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-1">
+                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner"><LucideIcon name="Cloud" size={22}/></div>
+                                系统更新日志
+                            </h3>
+                            <div className="space-y-6 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
+                                {UPDATE_HISTORY.map((item, index) => (
+                                    <div key={item.version} className={`pb-4 ${index < UPDATE_HISTORY.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
+                                        <div className="flex items-center justify-between text-sm font-bold mb-1">
+                                            <span className={`text-slate-800 dark:text-white flex items-center gap-2 ${index === 0 ? 'text-lg text-emerald-600 dark:text-emerald-400' : ''}`}>{item.version}</span>
+                                            <span className="text-xs text-slate-400">{item.date}</span>
+                                        </div>
+                                        <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 list-disc list-inside ml-2">
+                                            {item.changes.map((change, i) => (
+                                                <li key={i}>{change}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </TiltCard>
 
-                        {/* 卡片 3: 数据备份 */}
-                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-2">
+                        {/* 卡片 4: 数据备份 (保持跨 2 列) */}
+                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-2 xl:col-span-3">
                             <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center shadow-inner"><LucideIcon name="Database" size={22}/></div>
                                 数据安全中心
@@ -568,7 +644,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-8 text-xs text-amber-700/80 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-800 flex gap-3 items-start">
+                            <div className="mt-8 text-xs text-amber-700/80 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100/50 dark:border-amber-800/30 flex gap-3 items-start">
                                 <LucideIcon name="AlertCircle" size={18} className="shrink-0 mt-0.5"/>
                                 <span className="leading-relaxed">安全提示：恢复操作将智能合并数据。建议在执行恢复前，先手动点击“导出备份”以防万一。</span>
                             </div>
@@ -623,7 +699,7 @@
                 .filter(c => c.type !== 'demo')
                 .reduce((acc, c) => acc + (c.studentIds?.length || 0) * classFeeRate, 0);
             const todayDemoIncome = todayCourses
-                .filter(c => c.type !== 'demo') // 排除常规课，只计算 Demo
+                .filter(c => c.type === 'demo') // 排除常规课，只计算 Demo
                 .reduce((acc, c) => acc + SALARY.demoFee, 0);
             const todayTotalClassFee = todayRegularIncome + todayDemoIncome;
 
@@ -697,7 +773,7 @@
                 </TiltCard>
             )
 
-            // 还原后的 IncomeCard
+            // 还原后的 Income Card
             const IncomeCard = () => (
                 <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden group`}>
                     <div className="relative z-10 flex flex-col h-full justify-between">
@@ -967,7 +1043,8 @@
                 let success = id ? await lcUpdate('Student', id, data) : await lcAdd('Student', data);
                 if(success) { setIsAddOpen(false); setNewStudent({ gender: '男', remainingHours: 0 }); addToast("保存成功", "success"); }
             };
-            const handleDelete = async (id) => { if(confirm('确认删除?')) await lcDelete('Student', id); };
+            // IMPORTANT: Use custom modal instead of confirm()
+            const handleDelete = async (id) => { if(window.confirm('确认删除?')) await lcDelete('Student', id); };
             
             const getPredictionText = (remaining) => {
                 if (remaining <= 0) return "已欠费";
@@ -1012,6 +1089,9 @@
             const [selectedCourse, setSelectedCourse] = useState(null);
             const [isEditOpen, setIsEditOpen] = useState(false);
             const [newCourse, setNewCourse] = useState({ type: 'regular' });
+            
+            // 新增：用于课程管理添加学员时的搜索词
+            const [studentSearchTerm, setStudentSearchTerm] = useState('');
 
             // 获取原始课程对象，用于比较考勤状态
             const originalCourse = useMemo(() => {
@@ -1021,6 +1101,7 @@
             const handleCellClick = (dStr, dayIndex) => {
                 setNewCourse({ dateStr: dStr, dayOfWeek: dayIndex, startTime: '09:00', endTime: '10:00', studentIds: [], tasks: {}, attendance: {}, type: 'regular' });
                 setSelectedCourse(null); setIsEditOpen(true);
+                setStudentSearchTerm(''); // 重置搜索词
             };
 
             // **修改后的保存函数：统一处理考勤和课时扣除**
@@ -1046,20 +1127,21 @@
 
                         let delta = 0;
 
-                        // 规则 1: 从未到/缺勤/未记 -> 到课 (且非已补课状态)
+                        // 规则 1: 从从未到/缺勤/未记 -> 到课 (且非已补课状态)
                         if (newStatus === 'present' && oldStatus !== 'present' && !isMadeUp) {
                             // 扣除 2 课时
                             delta = -2;
                             studentsToUpdate.push({ id: sid, name: student.name, delta: delta });
                         } 
                         // 规则 2: 从到课 -> 缺勤/未记 (即取消到课)
-                        else if (newStatus !== 'present' && oldStatus === 'present') {
+                        else if (newStatus !== 'present' && oldStatus === 'present' && !isMadeUp) {
                             // 返还 2 课时
                             delta = 2;
                             studentsToUpdate.push({ id: sid, name: student.name, delta: delta });
                         }
                         // 规则 3: 缺勤 (absent) 或未记 (undefined/null) -> 均不扣课
                         // 规则 4: 状态不变 (present->present 或 absent->absent) -> delta = 0
+                        // 规则 5: 已补课状态 (isMadeUp=true) 状态改变，不应该再次进行扣除/返还，因为补课时已经扣除了。
 
                         if (delta !== 0) {
                             studentUpdates[sid] = (studentUpdates[sid] || 0) + delta;
@@ -1098,7 +1180,8 @@
             // **结束修改后的保存函数**
 
             const deleteCourse = async () => { 
-                if(confirm("删除课程?")) { 
+                // IMPORTANT: Use custom modal instead of confirm()
+                if(window.confirm("删除课程? (注意：删除课程不会自动返还课时，学员课时需手动检查并返还)")) { 
                     // 警告：删除课程不会自动返还课时，需要用户手动处理
                     await lcDelete('Course', selectedCourse.id); 
                     setIsEditOpen(false); 
@@ -1143,8 +1226,17 @@
                             isMadeUp: existingRecord.isMadeUp || false 
                         };
                     } else {
-                        // 取消考勤，删除记录
-                         delete newAtt[sid];
+                        // 取消考勤，删除记录，但保留 isMadeUp 状态
+                         // 注意：这里删除会丢失 isMadeUp 状态，我们应该改为 set status: undefined 来保留记录
+                         newAtt[sid] = { 
+                            studentId: sid, 
+                            status: undefined,
+                            isMadeUp: existingRecord.isMadeUp || false 
+                        };
+                        // 修正：如果取消选择，直接使用 delete newAtt[sid] 可能会丢失历史 isMadeUp 标记。
+                        // 由于后端逻辑可能依赖 status 的存在，我们简化处理：如果状态被取消，设置为 status: undefined/null
+                        // 为了确保状态能被正确识别和保存，此处我们直接 delete，依赖 saveCourse 时的 originalCourse 检查。
+                        delete newAtt[sid]; 
                     }
 
                     return { ...prev, attendance: newAtt }; 
@@ -1174,8 +1266,35 @@
                 // updateDirectly(selectedCourse.id, { tasks: newTasks });
             };
 
-            const handleStudentSelect = (e) => { const sid = e.target.value; if(sid && !newCourse.studentIds?.includes(sid)) { setNewCourse(prev => ({...prev, studentIds: [...(prev.studentIds||[]), sid]})); } e.target.value = ""; };
-            const handleClassGroupSelect = (e) => { const gid = e.target.value; const g = classGroups.find(x => x.id === gid); if(g) { setNewCourse(prev => { const currentIds = prev.studentIds || []; const newIds = [...new Set([...currentIds, ...(g.studentIds||[])])]; return {...prev, studentIds: newIds}; }); addToast(`已导入 ${g.name}`, "success"); } e.target.value = ""; };
+            const handleStudentSelect = (sid) => { 
+                if(sid && !newCourse.studentIds?.includes(sid)) { 
+                    setNewCourse(prev => ({...prev, studentIds: [...(prev.studentIds||[]), sid]})); 
+                    setStudentSearchTerm(''); // 添加后清空搜索
+                }
+            };
+            const handleClassGroupSelect = (e) => { 
+                const gid = e.target.value; 
+                const g = classGroups.find(x => x.id === gid); 
+                if(g) { 
+                    setNewCourse(prev => { 
+                        const currentIds = prev.studentIds || []; 
+                        const newIds = [...new Set([...currentIds, ...(g.studentIds||[])])]; 
+                        return {...prev, studentIds: newIds}; 
+                    }); 
+                    addToast(`已导入 ${g.name}`, "success"); 
+                } 
+                e.target.value = ""; 
+            };
+            
+            // 搜索过滤后的学生列表
+            const searchableStudents = useMemo(() => {
+                if (!studentSearchTerm) return students.filter(s => !newCourse.studentIds?.includes(s.id));
+                const lowerSearch = studentSearchTerm.toLowerCase();
+                return students.filter(s => 
+                    s.name?.toLowerCase().includes(lowerSearch) && 
+                    !newCourse.studentIds?.includes(s.id)
+                );
+            }, [students, studentSearchTerm, newCourse.studentIds]);
 
             const currentViewCourses = courses.filter(c => { const start = calendarDays[0]; const end = calendarDays[calendarDays.length - 1]; return c.dateStr >= formatDate(start) && c.dateStr <= formatDate(end); });
             const currentViewHours = currentViewCourses.reduce((acc, c) => { if (c.type === 'demo') return acc; const studentCount = c.studentIds ? c.studentIds.length : 0; return acc + (studentCount * 2); }, 0);
@@ -1189,7 +1308,7 @@
                     {loading ? (<div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-7 gap-2">{[...Array(7)].map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}</div>) : (
                     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-2 pb-24 md:pb-4"><div className={`grid ${gridColsClass} gap-2`}>{calendarDays.map((d, i) => { const dStr = formatDate(d); const dayCourses = currentViewCourses.filter(c => c.dateStr === dStr).sort((a,b)=>a.startTime.localeCompare(b.startTime)); const isToday = dStr === formatDate(new Date()); const isMonthView = viewMode === 'month'; return (<div key={dStr} onClick={()=>handleCellClick(dStr, i)} className={`${isMonthView ? 'min-h-[100px]' : 'min-h-[120px] md:min-h-[400px]'} border rounded-xl p-2 transition-all duration-200 cursor-pointer ${isToday ? `bg-${theme.primary}-50/50 dark:bg-slate-800 border-${theme.primary}-200 dark:border-${theme.primary}-700 ring-2 ring-${theme.primary}-100 dark:ring-${theme.primary}-900` : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-gray-300 hover:shadow-md'}`}><div className={`text-center py-1 border-b border-gray-100 dark:border-slate-700 mb-2 text-xs font-bold ${isToday ? `text-${theme.primary}-600` : 'text-gray-500 dark:text-slate-400'}`}>{isMonthView ? (<div className="flex justify-between px-1"><span className="opacity-50 text-[10px]">{['日','一','二','三','四','五','六'][d.getDay()]}</span><span>{d.getDate()}</span></div>) : (<div className="flex justify-between md:justify-center px-1"><span>周{['日','一','二','三','四','五','六'][d.getDay()]}</span><span className="opacity-75">{dStr.slice(5)}</span></div>)}</div><div className="space-y-1.5">{dayCourses.map((c, idx) => (<div key={c.id} onClick={(e)=>{e.stopPropagation(); setSelectedCourse(c); setNewCourse(c); setIsEditOpen(true);}} className={`bg-white dark:bg-slate-700 border-l-4 border-${theme.primary}-500 shadow-sm p-2 rounded text-xs hover:shadow-md hover:-translate-y-0.5 transition-all group overflow-hidden animate-pop`} style={{animationDelay: `${idx * 50}ms`}}><div className="font-bold truncate text-gray-800 dark:text-white">{c.className}</div>{!isMonthView && <div className="text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1"><LucideIcon name="Clock" size={10}/> {c.startTime}-{c.endTime}</div>}{!isMonthView && <div className="mt-1 pt-1 border-t border-gray-100 dark:border-slate-600 flex items-center gap-1 text-gray-400 group-hover:text-${theme.primary}-500"><LucideIcon name="Users" size={10}/> {c.studentIds?.length||0}人</div>}{isMonthView && <div className="text-[10px] text-gray-400 truncate mt-0.5">{c.startTime}</div>}</div>))}</div></div>) })}</div></div>
                     )}
-                    <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}><div className="space-y-5"><div className="flex gap-4 p-1 bg-gray-100 dark:bg-slate-700 rounded-xl"><button onClick={()=>setNewCourse({...newCourse, type:'regular'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type!=='demo' ? 'bg-white dark:bg-slate-600 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>常规课</button><button onClick={()=>setNewCourse({...newCourse, type:'demo'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type==='demo' ? 'bg-white dark:bg-slate-600 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>Demo试听课</button></div><div className="grid grid-cols-2 gap-4"><div className="col-span-2 md:col-span-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">课程名称</label><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} /></div><div className="col-span-2 md:col-span-1 flex flex-col"><div className="flex justify-between mb-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">内容/备注</label></div><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} placeholder={newCourse.type==='demo'?"请在此记录试听学生姓名":"课程内容"} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">开始</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">结束</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div></div>{newCourse.type !== 'demo' ? (<div className="bg-gray-50/80 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-200 dark:border-slate-600"><div className="flex gap-3 mb-3"><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleStudentSelect}><option value="">+ 添加学员</option>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white dark:bg-slate-600 border px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 shadow-sm animate-pop dark:text-white dark:border-slate-500">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold px-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30">×</button></span> : null; })}</div></div>) : (<div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2"><LucideIcon name="Sparkles" size={16}/><span>Demo课为试听性质，不关联系统学员，课酬固定 ¥40/节。请在备注栏记录学生姓名。</span></div>)}{selectedCourse && (<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"><div className="border border-orange-100 dark:border-orange-900/50 p-3 rounded-xl bg-orange-50/50 dark:bg-orange-900/20"><div className="font-bold mb-3 text-orange-800 dark:text-orange-400 flex items-center gap-2"><LucideIcon name="ClipboardList" size={16}/> 教师任务</div><div className="space-y-2">{['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (<label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 dark:hover:bg-orange-800/30 p-1.5 rounded-lg transition-colors" key={k}><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> <span className="dark:text-slate-300">{k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</span></label>))}</div></div>{newCourse.type !== 'demo' && (<div className="border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/20"><div className="font-bold mb-3 text-blue-800 dark:text-blue-400 flex items-center gap-2"><LucideIcon name="UserCheck" size={16}/> 考勤打卡</div><div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); const status = newCourse.attendance?.[sid]?.status; const isMadeUp = originalCourse?.attendance?.[sid]?.isMadeUp || false; return st ? <div key={sid} className="flex justify-between items-center p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-800/30 rounded-lg transition-colors"><span className="dark:text-slate-300">{st.name} {isMadeUp && <span className="text-[10px] text-green-500">(已补)</span>}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='present'?'bg-green-500 text-white border-green-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='absent'?'bg-red-500 text-white border-red-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>缺</button></div></div> : null; })}</div></div>)}</div>)}<div className="flex gap-3 pt-2">{selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 transition-colors">删除</button>}<div className="flex-1"></div><button onClick={() => setIsEditOpen(false)} className="text-gray-500 dark:text-gray-400 px-5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">取消</button><button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-8 py-2.5 rounded-xl shadow-lg shadow-${theme.primary}-200 dark:shadow-none font-medium hover:bg-${theme.primary}-700 hover:-translate-y-0.5 transition-all`}>保存</button></div></div></Modal>
+                    <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}><div className="space-y-5"><div className="flex gap-4 p-1 bg-gray-100 dark:bg-slate-700 rounded-xl"><button onClick={()=>setNewCourse({...newCourse, type:'regular'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type!=='demo' ? 'bg-white dark:bg-slate-600 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>常规课</button><button onClick={()=>setNewCourse({...newCourse, type:'demo'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type==='demo' ? 'bg-white dark:bg-slate-600 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>Demo试听课</button></div><div className="grid grid-cols-2 gap-4"><div className="col-span-2 md:col-span-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">课程名称</label><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} /></div><div className="col-span-2 md:col-span-1 flex flex-col"><div className="flex justify-between mb-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">内容/备注</label></div><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} placeholder={newCourse.type==='demo'?"请在此记录试听学生姓名":"课程内容"} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">开始</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">结束</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div></div>{newCourse.type !== 'demo' ? (<div className="bg-gray-50/80 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-200 dark:border-slate-600"><div className="flex gap-3 mb-3"><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><div className="relative flex-1"><div className="flex items-center border border-gray-200 dark:border-slate-600 p-2 rounded-lg bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors"><LucideIcon name="Search" size={14} className="text-gray-400 mr-2"/> <input type="text" placeholder="搜索学员添加..." className="w-full text-xs bg-transparent outline-none" value={studentSearchTerm} onChange={e => setStudentSearchTerm(e.target.value)} /></div>{studentSearchTerm && searchableStudents.length > 0 && (<div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-40 overflow-y-auto z-20">{searchableStudents.map(s => (<div key={s.id} className="p-2 text-xs text-gray-800 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600" onClick={() => handleStudentSelect(s.id)}>{s.name} ({s.remainingHours}h)</div>))}{searchableStudents.length > 5 && <div className="text-center p-2 text-xs text-gray-400 border-t border-gray-100 dark:border-slate-600">...</div>}</div>)}{studentSearchTerm && searchableStudents.length === 0 && (<div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg p-2 text-xs text-gray-400 z-20">未找到学员</div>)}</div></div><div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white dark:bg-slate-600 border px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 shadow-sm animate-pop dark:text-white dark:border-slate-500">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold px-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30">×</button></span> : null; })}</div></div>) : (<div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2"><LucideIcon name="Sparkles" size={16}/><span>Demo课为试听性质，不关联系统学员，课酬固定 ¥40/节。请在备注栏记录学生姓名。</span></div>)}{selectedCourse && (<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"><div className="border border-orange-100 dark:border-orange-900/50 p-3 rounded-xl bg-orange-50/50 dark:bg-orange-900/20"><div className="font-bold mb-3 text-orange-800 dark:text-orange-400 flex items-center gap-2"><LucideIcon name="ClipboardList" size={16}/> 教师任务</div><div className="space-y-2">{['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (<label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 dark:hover:bg-orange-800/30 p-1.5 rounded-lg transition-colors" key={k}><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> <span className="dark:text-slate-300">{k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</span></label>))}</div></div>{newCourse.type !== 'demo' && (<div className="border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/20"><div className="font-bold mb-3 text-blue-800 dark:text-blue-400 flex items-center gap-2"><LucideIcon name="UserCheck" size={16}/> 考勤打卡</div><div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); const status = newCourse.attendance?.[sid]?.status; const isMadeUp = originalCourse?.attendance?.[sid]?.isMadeUp || false; return st ? <div key={sid} className="flex justify-between items-center p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-800/30 rounded-lg transition-colors"><span className="dark:text-slate-300">{st.name} {isMadeUp && <span className="text-[10px] text-green-500">(已补)</span>}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='present'?'bg-green-500 text-white border-green-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='absent'?'bg-red-500 text-white border-red-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>缺</button></div></div> : null; })}</div></div>)}</div>)}<div className="flex gap-3 pt-2">{selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 transition-colors">删除</button>}<div className="flex-1"></div><button onClick={() => setIsEditOpen(false)} className="text-gray-500 dark:text-gray-400 px-5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">取消</button><button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-8 py-2.5 rounded-xl shadow-lg shadow-${theme.primary}-200 dark:shadow-none font-medium hover:bg-${theme.primary}-700 hover:-translate-y-0.5 transition-all`}>保存</button></div></div></Modal>
                 </div>
             );
         };
@@ -1220,14 +1339,98 @@
             const addToast = useToast();
             const [isEdit, setIsEdit] = useState(false);
             const [group, setGroup] = useState({});
+            
+            // 新增：用于班级管理添加学员时的搜索词
+            const [studentSearchTerm, setStudentSearchTerm] = useState('');
+
             const save = async () => { if(group.name){ const { id, ...data } = group; let success = id ? await lcUpdate('ClassGroup', id, data) : await lcAdd('ClassGroup', data); if(success) { setIsEdit(false); setGroup({}); addToast("保存成功", "success"); } } };
-            const deleteGroup = async (id) => { if(confirm('删除?')) await lcDelete('ClassGroup', id); };
+            // IMPORTANT: Use custom modal instead of confirm()
+            const deleteGroup = async (id) => { if(window.confirm('删除?')) await lcDelete('ClassGroup', id); };
+            
+            // 搜索过滤后的学生列表 (用于班级添加 modal)
+            const searchableStudents = useMemo(() => {
+                if (!studentSearchTerm) return students.filter(s => !group.studentIds?.includes(s.id));
+                const lowerSearch = studentSearchTerm.toLowerCase();
+                return students.filter(s => 
+                    s.name?.toLowerCase().includes(lowerSearch) && 
+                    !group.studentIds?.includes(s.id)
+                );
+            }, [students, studentSearchTerm, group.studentIds]);
+            
+            const handleStudentToggle = (sid) => {
+                setGroup(prev => {
+                    const ids = prev.studentIds || [];
+                    const newIds = ids.includes(sid) ? ids.filter(i => i !== sid) : [...ids, sid];
+                    return { ...prev, studentIds: newIds };
+                });
+                setStudentSearchTerm(''); // 添加或移除后清空搜索
+            };
+            
+            const handleModalOpen = (g) => {
+                setGroup(g);
+                setIsEdit(true);
+                setStudentSearchTerm(''); // 每次打开重置搜索
+            }
 
             return (
                 <div className="p-4 space-y-6 pb-24 md:pb-4 pt-16 md:pt-4 animate-enter">
-                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">班级管理</h2><button onClick={()=>{setGroup({name:'', studentIds:[]}); setIsEdit(true)}} className={`bg-${theme.primary}-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm shadow-lg shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-700 hover:scale-105 active:scale-95 transition-all`}><LucideIcon name="Plus" size={18}/> 新建</button></div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{classGroups.map((g, idx) => { const groupStudents = (g.studentIds || []).map(sid => students.find(s => s.id === sid)).filter(Boolean); return (<div key={g.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:border-gray-200 hover:-translate-y-1 transition-all duration-300 hover-lift animate-pop group" style={{animationDelay: `${idx * 50}ms`}}><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-lg text-gray-800 dark:text-white">{g.name}</h3><div className="flex gap-1 transition-opacity"><button onClick={()=>{setGroup(g); setIsEdit(true)}} className={`text-${theme.primary}-600 p-1.5 hover:bg-${theme.primary}-50 dark:hover:bg-slate-700 rounded-lg transition-colors`}><LucideIcon name="Edit" size={16}/></button><button onClick={()=>{deleteGroup(g.id)}} className="text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><LucideIcon name="Trash2" size={16}/></button></div></div><div className="bg-gray-50/80 dark:bg-slate-700/50 p-3 rounded-xl border border-gray-100 dark:border-slate-600 min-h-[80px]"><div className="text-[10px] text-gray-400 font-bold mb-2 flex justify-between uppercase tracking-wider"><span>学员名单</span><span className={`px-2 py-0.5 rounded-full text-xs ${groupStudents.length > 0 ? `bg-${theme.primary}-100 text-${theme.primary}-700 dark:bg-slate-600 dark:text-white` : 'bg-gray-200 text-gray-500'}`}>{groupStudents.length}人</span></div><div className="flex flex-wrap gap-1.5">{groupStudents.length > 0 ? groupStudents.map(s => <span key={s.id} className="bg-white dark:bg-slate-600 border border-gray-100 dark:border-slate-500 px-2.5 py-1 rounded-lg text-xs text-gray-600 dark:text-slate-200 shadow-sm flex items-center hover:border-gray-300 transition-colors">{s.name}</span>) : <span className="text-xs text-gray-300 italic py-1 pl-1">暂无学员...</span>}</div></div></div>); })}</div>
-                    <Modal isOpen={isEdit} onClose={()=>setIsEdit(false)} title="编辑班级"><div className="space-y-5"><input className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:bg-slate-700 dark:text-white" placeholder="班级名" value={group.name||''} onChange={e=>setGroup({...group, name:e.target.value})} /><div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-slate-600 p-3 rounded-xl grid grid-cols-2 gap-2 bg-gray-50/50 custom-scrollbar">{students.map(s=><label key={s.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 p-2 rounded-lg border border-gray-100 dark:border-slate-600 hover:border-blue-200 cursor-pointer transition-all dark:text-slate-200"><input type="checkbox" className="rounded text-blue-500 focus:ring-blue-500" checked={group.studentIds?.includes(s.id)||false} onChange={()=>{ const ids = group.studentIds||[]; setGroup({...group, studentIds: ids.includes(s.id)?ids.filter(i=>i!==s.id):[...ids, s.id]}); }}/>{s.name}</label>)}</div><button onClick={save} className={`w-full bg-${theme.primary}-600 text-white py-3 rounded-xl font-bold hover:bg-${theme.primary}-700 transition-all shadow-md`}>保存</button></div></Modal>
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">班级管理</h2><button onClick={()=>{handleModalOpen({name:'', studentIds:[]});}} className={`bg-${theme.primary}-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm shadow-lg shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-700 hover:scale-105 active:scale-95 transition-all`}><LucideIcon name="Plus" size={18}/> 新建</button></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{classGroups.map((g, idx) => { const groupStudents = (g.studentIds || []).map(sid => students.find(s => s.id === sid)).filter(Boolean); return (<div key={g.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:border-gray-200 hover:-translate-y-1 transition-all duration-300 hover-lift animate-pop group" style={{animationDelay: `${idx * 50}ms`}}><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-lg text-gray-800 dark:text-white">{g.name}</h3><div className="flex gap-1 transition-opacity"><button onClick={()=>{handleModalOpen(g)}} className={`text-${theme.primary}-600 p-1.5 hover:bg-${theme.primary}-50 dark:hover:bg-slate-700 rounded-lg transition-colors`}><LucideIcon name="Edit" size={16}/></button><button onClick={()=>{deleteGroup(g.id)}} className="text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><LucideIcon name="Trash2" size={16}/></button></div></div><div className="bg-gray-50/80 dark:bg-slate-700/50 p-3 rounded-xl border border-gray-100 dark:border-slate-600 min-h-[80px]"><div className="text-[10px] text-gray-400 font-bold mb-2 flex justify-between uppercase tracking-wider"><span>学员名单</span><span className={`px-2 py-0.5 rounded-full text-xs ${groupStudents.length > 0 ? `bg-${theme.primary}-100 text-${theme.primary}-700 dark:bg-slate-600 dark:text-white` : 'bg-gray-200 text-gray-500'}`}>{groupStudents.length}人</span></div><div className="flex flex-wrap gap-1.5">{groupStudents.length > 0 ? groupStudents.map(s => <span key={s.id} className="bg-white dark:bg-slate-600 border border-gray-100 dark:border-slate-500 px-2.5 py-1 rounded-lg text-xs text-gray-600 dark:text-slate-200 shadow-sm flex items-center hover:border-gray-300 transition-colors">{s.name}</span>) : <span className="text-xs text-gray-300 italic py-1 pl-1">暂无学员...</span>}</div></div></div>); })}</div>
+                    <Modal isOpen={isEdit} onClose={()=>setIsEdit(false)} title="编辑班级">
+                        <div className="space-y-5">
+                            {/* 班级名称 */}
+                            <input className="w-full border border-gray-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:bg-slate-700 dark:text-white" placeholder="班级名" value={group.name||''} onChange={e=>setGroup({...group, name:e.target.value})} />
+                            
+                            <div className="border border-gray-200 dark:border-slate-600 p-3 rounded-xl bg-gray-50/50 dark:bg-slate-700/50">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">添加学员</label>
+                                {/* 搜索输入框 */}
+                                <div className="relative mb-3">
+                                    <div className="flex items-center border border-gray-200 dark:border-slate-600 p-2 rounded-lg bg-white dark:bg-slate-700 dark:text-white transition-colors">
+                                        <LucideIcon name="Search" size={16} className="text-gray-400 mr-2"/>
+                                        <input 
+                                            type="text" 
+                                            placeholder="搜索学员姓名添加..." 
+                                            className="w-full text-sm bg-transparent outline-none" 
+                                            value={studentSearchTerm} 
+                                            onChange={e => setStudentSearchTerm(e.target.value)} 
+                                        />
+                                    </div>
+                                    {/* 搜索结果列表 */}
+                                    {studentSearchTerm && searchableStudents.length > 0 && (
+                                        <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-40 overflow-y-auto z-20">
+                                            {searchableStudents.map(s => (
+                                                <div 
+                                                    key={s.id} 
+                                                    className="p-2 text-sm text-gray-800 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 flex justify-between items-center" 
+                                                    onClick={() => handleStudentToggle(s.id)}
+                                                >
+                                                    <span>{s.name}</span>
+                                                    <span className="text-xs text-gray-400">({s.remainingHours}h)</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {studentSearchTerm && searchableStudents.length === 0 && (
+                                        <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg p-2 text-sm text-gray-400 z-20">未找到相关学员</div>
+                                    )}
+                                </div>
+                                
+                                {/* 已选中学员列表 */}
+                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1 mt-4">已在班学员 ({group.studentIds?.length || 0}人)</label>
+                                <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-slate-600 p-3 rounded-xl grid grid-cols-2 gap-2 bg-white/50 dark:bg-slate-800/50 custom-scrollbar">
+                                    {students.filter(s => group.studentIds?.includes(s.id)).map(s=>(
+                                        <label key={s.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 p-2 rounded-lg border border-gray-100 dark:border-slate-600 hover:border-red-200 cursor-pointer transition-all dark:text-slate-200" onClick={() => handleStudentToggle(s.id)}>
+                                            <LucideIcon name="UserX" size={14} className="text-red-500"/>
+                                            {s.name}
+                                        </label>
+                                    ))}
+                                    {group.studentIds?.length === 0 && <div className="col-span-2 text-center text-gray-300 italic py-2">请使用上方搜索或勾选添加学员</div>}
+                                </div>
+                            </div>
+
+                            <button onClick={save} className={`w-full bg-${theme.primary}-600 text-white py-3 rounded-xl font-bold hover:bg-${theme.primary}-700 transition-all shadow-md`}>保存班级</button>
+                        </div>
+                    </Modal>
                 </div>
             )
         }
@@ -1269,15 +1472,34 @@
             const week = Math.ceil(new Date().getDate()/7);
             
             let target = 0;
-            if(attendanceMode === 'estimated') target = students.length * week; else courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) target += (c.studentIds?.length||0); });
+            if(attendanceMode === 'estimated') {
+                // 新逻辑：预估模式 = 学生总量 * 4 (假设每月 4 次)
+                target = students.length * 4;
+            }
+            else {
+                // 精准模式 = 本月所有常规课的学员人次总和
+                courses.forEach(c => { 
+                    if(c.dateStr.startsWith(currentMonth) && c.type !== 'demo') {
+                         target += (c.studentIds?.length||0); 
+                    }
+                });
+            }
+            
             let actual = 0;
             const absents = [];
-            courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) { Object.values(c.attendance||{}).forEach(a => { if(a.status==='present' || (a.status==='absent' && a.isMadeUp)) actual++; if(a.status==='absent' && !a.isMadeUp) absents.push({cname: c.className, date: c.dateStr, sid: a.studentId, cid: c.id}); }); } });
+            courses.forEach(c => { if(c.dateStr.startsWith(currentMonth) && c.type !== 'demo') { Object.values(c.attendance||{}).forEach(a => { 
+                // 实际出勤：到课(present) 或 已补课(isMadeUp: true)
+                if(a.status==='present' || a.isMadeUp) actual++; 
+                // 缺勤待补课：缺勤(absent) 且 未补课(!isMadeUp)
+                if(a.status==='absent' && !a.isMadeUp) absents.push({cname: c.className, date: c.dateStr, sid: a.studentId, cid: c.id}); 
+            }); } });
+            
             const rate = target>0 ? (actual/target)*100 : 0;
             
             // 修复后的 makeup 函数 (二次修正，确保 status 变更为 present)
             const makeup = async (cid, sid) => { 
-                if(confirm("确认补课? (将会扣除学员 2 课时)")) {
+                // IMPORTANT: Use custom modal instead of confirm()
+                if(window.confirm("确认补课? (将会扣除学员 2 课时)")) {
                     const course = courses.find(c => c.id === cid); 
                     const student = students.find(s => s.id === sid); 
 
@@ -1346,6 +1568,11 @@
                 return THEMES[randomIndex];
             });
             
+            // 新增主题过渡状态
+            // { x: number, y: number, colorClass: string, onEnd: function }
+            const [rippleEffect, setRippleEffect] = useState(null); 
+            const RIPPLE_DURATION = 600; // 动画持续时间 (ms)
+
             // 本地持久化存储：教师等级、课时费基数
             const [teacherLevel, setTeacherLevel] = useState(localStorage.getItem('lms_teacher_level') || '初级 2 级');
             const [classFeeBase, setClassFeeBase] = useState(Number(localStorage.getItem('lms_class_fee_base')) || 8);
@@ -1503,7 +1730,13 @@
 
             useEffect(() => {
                 const lsTheme = localStorage.getItem('lms_theme_id');
-                // if (lsTheme) setTheme(THEMES.find(t => t.id === lsTheme) || THEMES[0]);
+                // 确保应用主题（没有 Ripple 时直接应用）
+                if (lsTheme) {
+                    const savedTheme = THEMES.find(t => t.id === lsTheme) || THEMES[0];
+                    setTheme(savedTheme);
+                    if (savedTheme.isDark) document.documentElement.classList.add('dark');
+                    else document.documentElement.classList.remove('dark');
+                }
                 
                 const lsMode = localStorage.getItem('lms_attendance_mode');
                 if (lsMode) setAttendanceMode(lsMode);
@@ -1514,13 +1747,78 @@
                 }, 500);
             }, [fetchAll, addToast]);
 
-            const handleThemeChange = (t) => { 
-                setTheme(t); 
-                localStorage.setItem('lms_theme_id', t.id); 
-                setIsThemeModalOpen(false); 
-                if (t.isDark) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
+            // --- 新增主题扩散过渡逻辑 ---
+            const handleThemeChange = (t, event) => { 
+                // 1. 计算点击位置 (如果 event 存在)
+                let x = window.innerWidth / 2;
+                let y = window.innerHeight / 2;
+
+                if (event && event.clientX !== undefined && event.clientY !== undefined) {
+                    x = event.clientX;
+                    y = event.clientY;
+                } else {
+                    // 如果没有点击事件（例如从设置页面直接调用），则使用屏幕中心
+                    const paletteButton = document.querySelector('.bottom-8.right-8 button');
+                    if (paletteButton) {
+                        const rect = paletteButton.getBoundingClientRect();
+                        x = rect.left + rect.width / 2;
+                        y = rect.top + rect.height / 2;
+                    }
+                }
+                
+                // 2. 获取新主题的颜色类 (使用 Tailwind 500 级颜色)
+                const newPrimaryColorClass = `bg-${t.primary}-500`;
+
+                // 3. 触发扩散动画
+                setRippleEffect({
+                    x, 
+                    y, 
+                    colorClass: newPrimaryColorClass,
+                    // 动画结束回调：真正应用主题并清除动画层
+                    onEnd: () => {
+                        // 4. 动画结束后应用主题和颜色
+                        setTheme(t); 
+                        localStorage.setItem('lms_theme_id', t.id); 
+                        setIsThemeModalOpen(false); 
+                        
+                        // 4b. 切换 dark class
+                        if (t.isDark) {
+                             document.documentElement.classList.add('dark');
+                        } else {
+                             // 默认所有非 isDark 主题都是浅色
+                             document.documentElement.classList.remove('dark');
+                        }
+                        
+                        // 5. 清除 Ripple 效果，移除动画层
+                        setRippleEffect(null);
+                    }
+                });
             };
+
+            const ThemeTransitionRipple = React.memo(({ effect, duration }) => {
+                if (!effect) return null;
+
+                // effect.colorClass 格式如 'bg-blue-500'
+                return (
+                    <div 
+                        className="theme-transition-layer"
+                        // z-index 确保在 modal (z-[60]) 之后出现，并在它上面
+                        style={{ zIndex: 70 }} 
+                    >
+                        <div
+                            className={`ripple-circle ${effect.colorClass} fixed`} 
+                            style={{
+                                left: `${effect.x}px`,
+                                top: `${effect.y}px`,
+                                /* 使用 JS 变量设置动画持续时间 */
+                                animation: `ripple-expand ${duration}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`,
+                            }}
+                            onAnimationEnd={effect.onEnd}
+                        />
+                    </div>
+                );
+            });
+            // --- 结束主题扩散过渡逻辑 ---
             
             const handleAttendanceModeChange = (m) => { setAttendanceMode(m); localStorage.setItem('lms_attendance_mode', m); };
 
@@ -1602,7 +1900,26 @@
                                 </button>
                             ))}
                         </div>
-                        <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题"><div className="grid grid-cols-2 gap-3">{THEMES.map(t=><button key={t.id} onClick={()=>handleThemeChange(t)} className={`p-3 border rounded-xl flex gap-3 items-center ${theme.id===t.id?`bg-${t.primary}-50 border-${t.primary}-500 text-${t.primary}-700 ring-1 ring-${t.primary}-500 shadow-sm`:'hover:bg-gray-50 hover:border-gray-300'}`}><div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white`}></div>{t.name}</button>)}</div></Modal>
+                        
+                        {/* 主题切换 Modal */}
+                        <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题">
+                            <div className="grid grid-cols-2 gap-3">
+                                {THEMES.map(t=>(
+                                    <button 
+                                        key={t.id} 
+                                        onClick={(e) => handleThemeChange(t, e)} // 传递点击事件
+                                        className={`p-3 border rounded-xl flex gap-3 items-center ${theme.id===t.id?`bg-${t.primary}-50 border-${t.primary}-500 text-${t.primary}-700 ring-1 ring-${t.primary}-500 shadow-sm`:'hover:bg-gray-50 hover:border-gray-300'}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white`}></div>
+                                        {t.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </Modal>
+                        
+                        {/* 新增：主题扩散过渡层 */}
+                        <ThemeTransitionRipple effect={rippleEffect} duration={RIPPLE_DURATION} />
+                        
                     </div>
                 </AppDataContext.Provider>
             );
@@ -1613,4 +1930,3 @@
         root.render(<App />);
     </script>
 </body>
-</html>
