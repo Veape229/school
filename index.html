@@ -1554,7 +1554,7 @@
                             <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight">
                                 {/* 移除了动态头像，使用静态图标 */}
                                 <div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}><LucideIcon name="Award" size={24}/></div>
-                                <span className="text-slate-800 dark:text-white">Veape Pro</span>
+                                <span className="text-slate-800 dark:text-white">Veape Studio</span>
                             </div>
                             <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
                                 {['dashboard','schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>setActiveTab(k)} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm font-bold`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='dashboard'?'概览':k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}
