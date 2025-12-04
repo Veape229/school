@@ -277,7 +277,7 @@
             Coffee: <><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>,
             Quote: <><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></>
         };
-        const LucideIcon = ({ name, size = 20, className }) => <Icon path={icons[name] || icons.Users} size={size} className={className} />;
+        const LucideIcon = ({ name, size = 20, className = "" }) => <Icon path={icons[name] || icons.Users} size={size} className={className} />;
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
@@ -323,7 +323,8 @@
                 quotes, setQuotes, // 获取语录相关状态
                 showTodayIncome, setShowTodayIncome // 新增：今日收入开关状态
             } = useAppData();
-            const addToast = useToast();
+            // FIX: 确保 addToast 使用 useToast() 而不是从 useAppData 解构
+            const addToast = useToast(); 
             const [importing, setImporting] = useState(false);
             const [newQuote, setNewQuote] = useState(""); // 新语录输入状态
 
@@ -1010,19 +1011,96 @@
             const [isEditOpen, setIsEditOpen] = useState(false);
             const [newCourse, setNewCourse] = useState({ type: 'regular' });
 
+            // 获取原始课程对象，用于比较考勤状态
+            const originalCourse = useMemo(() => {
+                return selectedCourse ? courses.find(c => c.id === selectedCourse.id) : null;
+            }, [selectedCourse, courses]);
+
             const handleCellClick = (dStr, dayIndex) => {
                 setNewCourse({ dateStr: dStr, dayOfWeek: dayIndex, startTime: '09:00', endTime: '10:00', studentIds: [], tasks: {}, attendance: {}, type: 'regular' });
                 setSelectedCourse(null); setIsEditOpen(true);
             };
 
+            // **修改后的保存函数：统一处理考勤和课时扣除**
             const saveCourse = async () => {
                 if (!newCourse.className) return addToast("请填写课程名称", "error");
                 const { id, ...data } = newCourse;
+                
+                let studentsToUpdate = [];
+                let studentUpdates = {}; // { studentId: deltaRemainingHours }
+
+                if (newCourse.type !== 'demo' && id && originalCourse) {
+                    const newAttendance = newCourse.attendance || {};
+                    const oldAttendance = originalCourse.attendance || {};
+
+                    // 遍历所有学生，计算课时变化
+                    for (const sid of newCourse.studentIds || []) {
+                        const student = students.find(s => s.id === sid);
+                        if (!student) continue;
+
+                        const newStatus = newAttendance[sid]?.status;
+                        const oldStatus = oldAttendance[sid]?.status;
+                        const isMadeUp = oldAttendance[sid]?.isMadeUp; // 补课状态不应在常规编辑中更改
+
+                        let delta = 0;
+
+                        if (newStatus === 'present' && oldStatus !== 'present' && !isMadeUp) {
+                            // 从未到/缺勤 -> 到课: 扣 2 课时
+                            delta = -2;
+                            studentsToUpdate.push({ id: sid, name: student.name, delta: delta });
+                        } else if (newStatus === 'absent' && oldStatus === 'present') {
+                            // 从到课 -> 缺勤: 返还 2 课时
+                            delta = 2;
+                            studentsToUpdate.push({ id: sid, name: student.name, delta: delta });
+                        }
+                        // 如果状态不变 (e.g., absent -> absent, present -> present), delta 为 0
+
+                        if (delta !== 0) {
+                            studentUpdates[sid] = (studentUpdates[sid] || 0) + delta;
+                        }
+
+                        // 确保新课程的考勤记录保持 isMadeUp 状态（AttendanceManager负责更改）
+                        if (isMadeUp) {
+                             newCourse.attendance[sid] = { ...newCourse.attendance[sid], isMadeUp: isMadeUp };
+                        }
+                    }
+                }
+                
+                // 1. 更新课程信息 (包括最新的考勤状态)
                 let success = id ? await lcUpdate('Course', id, data) : await lcAdd('Course', data);
-                if(success) { setIsEditOpen(false); addToast("排课成功", "success"); }
+
+                if (success && studentsToUpdate.length > 0) {
+                    // 2. 批量更新学员课时
+                    for (const sid in studentUpdates) {
+                        const delta = studentUpdates[sid];
+                        const student = students.find(s => s.id === sid);
+                        if (student) {
+                            const newRemaining = (student.remainingHours || 0) + delta;
+                            await lcUpdate('Student', sid, { remainingHours: newRemaining });
+                            
+                            const updateMsg = delta < 0 ? `已扣除 ${student.name} ${Math.abs(delta)} 课时` : `已返还 ${student.name} ${Math.abs(delta)} 课时`;
+                            addToast(updateMsg, delta < 0 ? "success" : "info");
+                        }
+                    }
+                }
+
+                if(success) { 
+                    setIsEditOpen(false); 
+                    addToast("排课信息及考勤已保存", "success"); 
+                }
             };
-            const deleteCourse = async () => { if(confirm("删除课程?")) { await lcDelete('Course', selectedCourse.id); setIsEditOpen(false); } };
+            // **结束修改后的保存函数**
+
+            const deleteCourse = async () => { 
+                if(confirm("删除课程?")) { 
+                    // 警告：删除课程不会自动返还课时，需要用户手动处理
+                    await lcDelete('Course', selectedCourse.id); 
+                    setIsEditOpen(false); 
+                    addToast("课程已删除 (请检查学员课时是否需要手动返还)", "error");
+                } 
+            };
             
+            // 此函数仅用于在 CourseSchedule 内部更新 Course，现在仅用于更新 Tasks
             const updateDirectly = async (id, data) => {
                 setCourses(prev => prev.map(c => c.id === id ? {...c, ...data} : c));
                 const obj = AV.Object.createWithoutData('Course', id);
@@ -1033,34 +1111,45 @@
                 await obj.save();
             };
 
-            const toggleAtt = async (sid, status) => {
-                if(!selectedCourse) return;
-                const att = selectedCourse.attendance || {};
-                const currentStatus = att[sid]?.status;
-                
-                if (selectedCourse.id && newCourse.type !== 'demo') { 
-                    const student = students.find(s => s.id === sid);
-                    if (student) {
-                        let newRemaining = student.remainingHours || 0;
-                        let shouldUpdateStudent = false;
-                        if (status === 'present' && currentStatus !== 'present') { newRemaining -= 2; shouldUpdateStudent = true; addToast(`已扣除 ${student.name} 2 课时`, "success"); } 
-                        else if (status === 'absent' && currentStatus === 'present') { newRemaining += 2; shouldUpdateStudent = true; addToast(`已返还 ${student.name} 2 课时`, "info"); }
+            // **修改后的 toggleAtt：只更新 newCourse 状态**
+            const toggleAtt = (sid, status) => {
+                if (newCourse.type === 'demo') return;
 
-                        if (shouldUpdateStudent) {
-                            await lcUpdate('Student', sid, { remainingHours: newRemaining });
-                        }
+                setNewCourse(prev => { 
+                    const att = prev.attendance || {};
+                    const currentStatus = att[sid]?.status;
+                    let newStatus = status;
+
+                    // 逻辑: 如果点击的状态与当前状态相同，则取消考勤 (设为 null/undefined)
+                    if (currentStatus === status) {
+                        newStatus = undefined; // 取消选择
                     }
-                }
 
-                if(!selectedCourse.id) { setNewCourse(prev => { const att = prev.attendance||{}; return {...prev, attendance: {...att, [sid]: {studentId: sid, status}}}; }); return; }
-                
-                const newAtt = {...att, [sid]: {studentId: sid, status, isMadeUp: false}};
-                setNewCourse(prev => ({...prev, attendance: newAtt}));
-                await updateDirectly(selectedCourse.id, { attendance: newAtt });
+                    // 复制现有考勤记录，保留 isMadeUp 状态
+                    const existingRecord = att[sid] || {};
+                    
+                    const newAtt = { ...att };
+                    if (newStatus) {
+                         // 设置新状态，并确保 isMadeUp 状态被保留
+                        newAtt[sid] = { 
+                            studentId: sid, 
+                            status: newStatus,
+                            isMadeUp: existingRecord.isMadeUp || false 
+                        };
+                    } else {
+                        // 取消考勤，删除记录或设为初始状态
+                         delete newAtt[sid];
+                    }
+
+                    return { ...prev, attendance: newAtt }; 
+                });
+                // 注意：这里不再调用任何 lcUpdate 或 updateDirectly
+                addToast(`考勤状态已修改为：${status === 'present' ? '到' : status === 'absent' ? '缺' : '未记'} (待保存)`, "info");
             };
+            // **结束修改后的 toggleAtt**
             
             const toggleTask = (t) => {
-                if(!selectedCourse.id) { setNewCourse(prev => { const tasks = prev.tasks||{}; return {...prev, tasks: {...tasks, [t]: !tasks[t]}}; }); return; }
+                if(!selectedCourse?.id) { setNewCourse(prev => { const tasks = prev.tasks||{}; return {...prev, tasks: {...tasks, [t]: !tasks[t]}}; }); return; }
                 const tasks = selectedCourse.tasks || {};
                 const newTasks = {...tasks, [t]: !tasks[t]};
                 setNewCourse(prev => ({...prev, tasks: newTasks}));
@@ -1082,7 +1171,7 @@
                     {loading ? (<div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-7 gap-2">{[...Array(7)].map((_, i) => <Skeleton key={i} className="h-96 rounded-xl" />)}</div>) : (
                     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-2 pb-24 md:pb-4"><div className={`grid ${gridColsClass} gap-2`}>{calendarDays.map((d, i) => { const dStr = formatDate(d); const dayCourses = currentViewCourses.filter(c => c.dateStr === dStr).sort((a,b)=>a.startTime.localeCompare(b.startTime)); const isToday = dStr === formatDate(new Date()); const isMonthView = viewMode === 'month'; return (<div key={dStr} onClick={()=>handleCellClick(dStr, i)} className={`${isMonthView ? 'min-h-[100px]' : 'min-h-[120px] md:min-h-[400px]'} border rounded-xl p-2 transition-all duration-200 cursor-pointer ${isToday ? `bg-${theme.primary}-50/50 dark:bg-slate-800 border-${theme.primary}-200 dark:border-${theme.primary}-700 ring-2 ring-${theme.primary}-100 dark:ring-${theme.primary}-900` : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-gray-300 hover:shadow-md'}`}><div className={`text-center py-1 border-b border-gray-100 dark:border-slate-700 mb-2 text-xs font-bold ${isToday ? `text-${theme.primary}-600` : 'text-gray-500 dark:text-slate-400'}`}>{isMonthView ? (<div className="flex justify-between px-1"><span className="opacity-50 text-[10px]">{['日','一','二','三','四','五','六'][d.getDay()]}</span><span>{d.getDate()}</span></div>) : (<div className="flex justify-between md:justify-center px-1"><span>周{['日','一','二','三','四','五','六'][d.getDay()]}</span><span className="opacity-75">{dStr.slice(5)}</span></div>)}</div><div className="space-y-1.5">{dayCourses.map((c, idx) => (<div key={c.id} onClick={(e)=>{e.stopPropagation(); setSelectedCourse(c); setNewCourse(c); setIsEditOpen(true);}} className={`bg-white dark:bg-slate-700 border-l-4 border-${theme.primary}-500 shadow-sm p-2 rounded text-xs hover:shadow-md hover:-translate-y-0.5 transition-all group overflow-hidden animate-pop`} style={{animationDelay: `${idx * 50}ms`}}><div className="font-bold truncate text-gray-800 dark:text-white">{c.className}</div>{!isMonthView && <div className="text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1"><LucideIcon name="Clock" size={10}/> {c.startTime}-{c.endTime}</div>}{!isMonthView && <div className="mt-1 pt-1 border-t border-gray-100 dark:border-slate-600 flex items-center gap-1 text-gray-400 group-hover:text-${theme.primary}-500"><LucideIcon name="Users" size={10}/> {c.studentIds?.length||0}人</div>}{isMonthView && <div className="text-[10px] text-gray-400 truncate mt-0.5">{c.startTime}</div>}</div>))}</div></div>) })}</div></div>
                     )}
-                    <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}><div className="space-y-5"><div className="flex gap-4 p-1 bg-gray-100 dark:bg-slate-700 rounded-xl"><button onClick={()=>setNewCourse({...newCourse, type:'regular'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type!=='demo' ? 'bg-white dark:bg-slate-600 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>常规课</button><button onClick={()=>setNewCourse({...newCourse, type:'demo'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type==='demo' ? 'bg-white dark:bg-slate-600 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>Demo试听课</button></div><div className="grid grid-cols-2 gap-4"><div className="col-span-2 md:col-span-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">课程名称</label><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} /></div><div className="col-span-2 md:col-span-1 flex flex-col"><div className="flex justify-between mb-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">内容/备注</label></div><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} placeholder={newCourse.type==='demo'?"请在此记录试听学生姓名":"课程内容"} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">开始</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">结束</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div></div>{newCourse.type !== 'demo' ? (<div className="bg-gray-50/80 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-200 dark:border-slate-600"><div className="flex gap-3 mb-3"><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleStudentSelect}><option value="">+ 添加学员</option>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white dark:bg-slate-600 border px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 shadow-sm animate-pop dark:text-white dark:border-slate-500">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold px-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30">×</button></span> : null; })}</div></div>) : (<div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2"><LucideIcon name="Sparkles" size={16}/><span>Demo课为试听性质，不关联系统学员，课酬固定 ¥40/节。请在备注栏记录学生姓名。</span></div>)}{selectedCourse && (<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"><div className="border border-orange-100 dark:border-orange-900/50 p-3 rounded-xl bg-orange-50/50 dark:bg-orange-900/20"><div className="font-bold mb-3 text-orange-800 dark:text-orange-400 flex items-center gap-2"><LucideIcon name="ClipboardList" size={16}/> 教师任务</div><div className="space-y-2">{['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (<label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 dark:hover:bg-orange-800/30 p-1.5 rounded-lg transition-colors"><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> <span className="dark:text-slate-300">{k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</span></label>))}</div></div>{newCourse.type !== 'demo' && (<div className="border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/20"><div className="font-bold mb-3 text-blue-800 dark:text-blue-400 flex items-center gap-2"><LucideIcon name="UserCheck" size={16}/> 考勤打卡</div><div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); const status = newCourse.attendance?.[sid]?.status; return st ? <div key={sid} className="flex justify-between items-center p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-800/30 rounded-lg transition-colors"><span className="dark:text-slate-300">{st.name}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='present'?'bg-green-500 text-white border-green-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='absent'?'bg-red-500 text-white border-red-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>缺</button></div></div> : null; })}</div></div>)}</div>)}<div className="flex gap-3 pt-2">{selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 transition-colors">删除</button>}<div className="flex-1"></div><button onClick={() => setIsEditOpen(false)} className="text-gray-500 dark:text-gray-400 px-5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">取消</button><button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-8 py-2.5 rounded-xl shadow-lg shadow-${theme.primary}-200 dark:shadow-none font-medium hover:bg-${theme.primary}-700 hover:-translate-y-0.5 transition-all`}>保存</button></div></div></Modal>
+                    <Modal isOpen={isEditOpen} onClose={()=>setIsEditOpen(false)} title={selectedCourse ? "课程详情" : "新课程排课"}><div className="space-y-5"><div className="flex gap-4 p-1 bg-gray-100 dark:bg-slate-700 rounded-xl"><button onClick={()=>setNewCourse({...newCourse, type:'regular'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type!=='demo' ? 'bg-white dark:bg-slate-600 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>常规课</button><button onClick={()=>setNewCourse({...newCourse, type:'demo'})} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newCourse.type==='demo' ? 'bg-white dark:bg-slate-600 shadow text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>Demo试听课</button></div><div className="grid grid-cols-2 gap-4"><div className="col-span-2 md:col-span-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">课程名称</label><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.className||''} onChange={e=>setNewCourse({...newCourse, className:e.target.value})} /></div><div className="col-span-2 md:col-span-1 flex flex-col"><div className="flex justify-between mb-1"><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">内容/备注</label></div><input className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.content||''} onChange={e=>setNewCourse({...newCourse, content:e.target.value})} placeholder={newCourse.type==='demo'?"请在此记录试听学生姓名":"课程内容"} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">开始</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.startTime||''} onChange={e=>setNewCourse({...newCourse, startTime:e.target.value})} /></div><div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">结束</label><input type="time" className="w-full border border-gray-200 dark:border-slate-600 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none dark:bg-slate-700 dark:text-white" value={newCourse.endTime||''} onChange={e=>setNewCourse({...newCourse, endTime:e.target.value})} /></div></div>{newCourse.type !== 'demo' ? (<div className="bg-gray-50/80 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-200 dark:border-slate-600"><div className="flex gap-3 mb-3"><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleClassGroupSelect}><option value="">+ 导入班级</option>{classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><select className="border border-gray-200 dark:border-slate-600 p-2 rounded-lg text-xs flex-1 bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors" onChange={handleStudentSelect}><option value="">+ 添加学员</option>{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="flex flex-wrap gap-2 min-h-[2rem]">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); return st ? <span key={sid} className="bg-white dark:bg-slate-600 border px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 shadow-sm animate-pop dark:text-white dark:border-slate-500">{st.name} <button onClick={()=>setNewCourse(prev=>({...prev, studentIds: prev.studentIds.filter(id=>id!==sid)}))} className="text-red-400 hover:text-red-600 font-bold px-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30">×</button></span> : null; })}</div></div>) : (<div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2"><LucideIcon name="Sparkles" size={16}/><span>Demo课为试听性质，不关联系统学员，课酬固定 ¥40/节。请在备注栏记录学生姓名。</span></div>)}{selectedCourse && (<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"><div className="border border-orange-100 dark:border-orange-900/50 p-3 rounded-xl bg-orange-50/50 dark:bg-orange-900/20"><div className="font-bold mb-3 text-orange-800 dark:text-orange-400 flex items-center gap-2"><LucideIcon name="ClipboardList" size={16}/> 教师任务</div><div className="space-y-2">{['teachingDone','interpretationSent','homeworkSent','reflectionDone'].map(k => (<label key={k} className="flex items-center gap-2 cursor-pointer hover:bg-orange-100/50 dark:hover:bg-orange-800/30 p-1.5 rounded-lg transition-colors"><input type="checkbox" className="rounded text-orange-500 focus:ring-orange-500" checked={newCourse.tasks?.[k]||false} onChange={()=>toggleTask(k)} /> <span className="dark:text-slate-300">{k==='teachingDone'?'授课完成':k==='interpretationSent'?'解读发送':k==='homeworkSent'?'作业发送':'反思完成'}</span></label>))}</div></div>{newCourse.type !== 'demo' && (<div className="border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/20"><div className="font-bold mb-3 text-blue-800 dark:text-blue-400 flex items-center gap-2"><LucideIcon name="UserCheck" size={16}/> 考勤打卡</div><div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">{newCourse.studentIds?.map(sid => { const st = students.find(s=>s.id===sid); const status = newCourse.attendance?.[sid]?.status; const isMadeUp = originalCourse?.attendance?.[sid]?.isMadeUp || false; return st ? <div key={sid} className="flex justify-between items-center p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-800/30 rounded-lg transition-colors"><span className="dark:text-slate-300">{st.name} {isMadeUp && <span className="text-[10px] text-green-500">(已补)</span>}</span> <div className="flex gap-1"><button onClick={()=>toggleAtt(sid,'present')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='present'?'bg-green-500 text-white border-green-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>到</button><button onClick={()=>toggleAtt(sid,'absent')} className={`px-2 py-0.5 rounded text-[10px] border transition-all ${status==='absent'?'bg-red-500 text-white border-red-600 shadow-sm':'bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-600'}`}>缺</button></div></div> : null; })}</div></div>)}</div>)}<div className="flex gap-3 pt-2">{selectedCourse && <button onClick={deleteCourse} className="text-red-500 text-sm border border-red-200 px-5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 transition-colors">删除</button>}<div className="flex-1"></div><button onClick={() => setIsEditOpen(false)} className="text-gray-500 dark:text-gray-400 px-5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">取消</button><button onClick={saveCourse} className={`bg-${theme.primary}-600 text-white px-8 py-2.5 rounded-xl shadow-lg shadow-${theme.primary}-200 dark:shadow-none font-medium hover:bg-${theme.primary}-700 hover:-translate-y-0.5 transition-all`}>保存</button></div></div></Modal>
                 </div>
             );
         };
@@ -1127,6 +1216,7 @@
 
         const FollowUpManager = () => {
             const { students, classGroups, followUps, formatDate, theme, exportToCSV, lcAdd, lcUpdate } = useAppData();
+            const addToast = useToast(); // FIX: 确保 addToast 使用 useToast()
             const currentMonth = formatDate(new Date()).slice(0,7);
             const total = students.length * 2;
             const done = followUps.filter(f => f.monthStr === currentMonth).reduce((s,r)=>s+r.count,0);
@@ -1154,7 +1244,9 @@
         }
 
         const AttendanceManager = () => {
-            const { courses, students, attendanceMode, handleAttendanceModeChange, theme, formatDate, exportToCSV, lcUpdate, addToast } = useAppData(); // Make sure addToast is available here
+            const { courses, students, attendanceMode, handleAttendanceModeChange, theme, formatDate, exportToCSV, lcUpdate } = useAppData(); 
+            // FIX: 确保 addToast 使用 useToast() 而不是从 useAppData 解构
+            const addToast = useToast(); 
             const currentMonth = formatDate(new Date()).slice(0,7);
             const week = Math.ceil(new Date().getDate()/7);
             
@@ -1444,7 +1536,7 @@
                             <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight">
                                 {/* 移除了动态头像，使用静态图标 */}
                                 <div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}><LucideIcon name="Award" size={24}/></div>
-                                <span className="text-slate-800 dark:text-white">Veape Studio</span>
+                                <span className="text-slate-800 dark:text-white">Veape Pro</span>
                             </div>
                             <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
                                 {['dashboard','schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>setActiveTab(k)} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm font-bold`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='dashboard'?'概览':k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}
