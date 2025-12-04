@@ -96,7 +96,6 @@
         html.dark .blob { opacity: 0.2; }
         .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #bfdbfe; animation-delay: 0s; }
         .blob-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vw; background: #e9d5ff; animation-delay: -5s; }
-        .blob-3 { top: 40%; left: 40%; width: 40vw; height: 40vw; background: #fed7aa; animation-delay: -10s; }
         html.dark .blob-1 { background: #1e3a8a; }
         html.dark .blob-2 { background: #581c87; }
         html.dark .blob-3 { background: #7c2d12; }
@@ -168,6 +167,42 @@
         .spinner { border: 3px solid rgba(59, 130, 246, 0.3); border-radius: 50%; border-top: 3px solid #3b82f6; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .modal-overlay { animation: fadeInUp 0.2s ease-out forwards; backdrop-filter: blur(4px); background: rgba(0,0,0,0.2); }
+
+        /* Custom Toggle Switch Style */
+        .toggle-switch input[type="checkbox"] {
+            display: none;
+        }
+        .toggle-switch label {
+            display: block;
+            width: 48px;
+            height: 24px;
+            background-color: #cbd5e1; /* slate-300 */
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .toggle-switch label::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .toggle-switch input[type="checkbox"]:checked + label {
+            background-color: var(--primary-color, #3b82f6); /* blue-500 default */
+        }
+        .toggle-switch input[type="checkbox"]:checked + label::after {
+            transform: translateX(24px);
+        }
+        /* Dark mode compatibility */
+        html.dark .toggle-switch label {
+            background-color: #475569; /* slate-600 */
+        }
     </style>
 </head>
 <body class="h-screen overflow-hidden selection:bg-indigo-200 selection:text-indigo-900 dark:selection:bg-indigo-500 dark:selection:text-white">
@@ -185,7 +220,7 @@
             { id: 'emerald', name: '森林绿', primary: 'emerald', accent: 'lime' },
             { id: 'dark', name: '深邃黑', primary: 'slate', accent: 'indigo', isDark: true },
         ];
-        const AVATARS = ["🦁", "🐱", "🐼", "🦊", "🐨", "🐯", "🐮", "🐷", "🐸", "🐙", "🦄", "🎓", "👩‍🏫", "👨‍🏫", "🚀", "⭐"];
+        // 移除了 AVATARS 数组
         const DEFAULT_QUOTES = ["今天也是元气满满的一天！✨", "教育的本质是唤醒。🌱", "种一棵树最好的时间是十年前，其次是现在。🌲", "星光不问赶路人。⭐"];
 
         // --- Context ---
@@ -284,16 +319,23 @@
         const SettingsManager = () => {
             const { 
                 teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, theme, 
-                students, courses, classGroups, followUps, formatDate, fetchAll, avatar, setAvatar,
-                quotes, setQuotes // 获取语录相关状态
+                students, courses, classGroups, followUps, formatDate, fetchAll,
+                quotes, setQuotes, // 获取语录相关状态
+                showTodayIncome, setShowTodayIncome // 新增：今日收入开关状态
             } = useAppData();
             const addToast = useToast();
             const [importing, setImporting] = useState(false);
             const [newQuote, setNewQuote] = useState(""); // 新语录输入状态
 
+            // 监听主题变化以更新CSS变量，确保开关颜色正确
+            useEffect(() => {
+                document.documentElement.style.setProperty('--primary-color', tailwind.config.theme.extend.colors[theme.primary]?.[600] || '#3b82f6');
+            }, [theme]);
+
             const handleSave = () => {
-                // 保存语录到 localStorage (和 useEffect 中的逻辑一致，这里为了反馈)
+                // 保存语录和新设置到 localStorage 
                 localStorage.setItem('lms_quotes', JSON.stringify(quotes));
+                localStorage.setItem('lms_show_today_income', showTodayIncome);
                 addToast("设置已保存", "success");
             }
             
@@ -402,16 +444,29 @@
                                 常规选项
                             </h3>
                             <div className="space-y-8 flex-1">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">选择头像</label>
-                                    <div className="flex flex-wrap gap-3">
-                                        {AVATARS.map(emoji => (
-                                            <button key={emoji} onClick={()=>setAvatar(emoji)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all ${avatar===emoji ? `bg-${theme.primary}-100 ring-2 ring-${theme.primary}-500 scale-110` : 'bg-white/50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600'}`}>
-                                                {emoji}
-                                            </button>
-                                        ))}
+                                
+                                {/* 移除了选择头像功能 */}
+                                
+                                {/* 新增：概览页面收入开关 */}
+                                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-800/50 flex justify-between items-center shadow-sm">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
+                                            显示今日收入
+                                        </label>
+                                        <p className="text-xs text-slate-400">在概览页卡片中显示敏感的薪资数据</p>
+                                    </div>
+                                    <div className="toggle-switch">
+                                        <input 
+                                            type="checkbox" 
+                                            id="showIncomeToggle" 
+                                            checked={showTodayIncome} 
+                                            onChange={() => setShowTodayIncome(!showTodayIncome)} 
+                                        />
+                                        <label htmlFor="showIncomeToggle"></label>
                                     </div>
                                 </div>
+
+
                                 <div>
                                     <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">教师评级</label>
                                     <input className="w-full border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all text-slate-700 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={teacherLevel} onChange={e=>setTeacherLevel(e.target.value)} placeholder="例如：初级 2 级" />
@@ -522,7 +577,7 @@
 
         // 0. 仪表盘 (Dashboard)
         const Dashboard = () => {
-            const { students, courses, classGroups, followUps, theme, formatDate, teacherLevel, classFeeBase, loading, quotes } = useAppData();
+            const { students, courses, classGroups, followUps, theme, formatDate, teacherLevel, classFeeBase, loading, quotes, showTodayIncome } = useAppData();
             const [greeting, setGreeting] = useState({ text: "早安", icon: "Sun" });
             const [quote, setQuote] = useState("");
 
@@ -631,6 +686,53 @@
                 return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 inline-flex items-center gap-0.5 ${color}`}>{arrow} {valStr}</span>;
             };
 
+            const HiddenIncomeCard = () => (
+                <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-center items-center h-full hover-lift group">
+                    <LucideIcon name="Wallet" size={32} className={`text-${theme.primary}-500 mb-2 opacity-50`}/>
+                    <div className="text-xl font-bold text-slate-800 dark:text-white">今日收入已隐藏</div>
+                    <div className="text-xs text-slate-400 mt-1">请在“系统设置”中开启显示</div>
+                </TiltCard>
+            )
+
+            // 还原后的 IncomeCard
+            const IncomeCard = () => (
+                <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden group`}>
+                    <div className="relative z-10 flex flex-col h-full justify-between">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-2 opacity-90 text-xs font-bold mb-1 uppercase tracking-wider">
+                                    <LucideIcon name="Wallet" size={14}/> 今日总收入
+                                </div>
+                                <div className="text-4xl font-extrabold tracking-tight">
+                                    ¥{todayTotalIncome.toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="text-right opacity-80">
+                                <div className="text-xs font-bold">{todayStr}</div>
+                                <div className="text-[10px] mt-0.5">{isTodayWorking ? '工作日' : '休息日'}</div>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8 grid grid-cols-3 gap-2 text-center border-t border-white/20 pt-4">
+                            <div>
+                                <div className="text-xs opacity-70 uppercase tracking-wider mb-1">课时费</div>
+                                <div className="text-xl font-bold">¥{todayTotalClassFee.toFixed(0)}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs opacity-70 uppercase tracking-wider mb-1">底薪摊</div>
+                                <div className="text-xl font-bold">¥{todayBase.toFixed(0)}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs opacity-70 uppercase tracking-wider mb-1">餐补</div>
+                                <div className="text-xl font-bold">¥{todayLunch}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Decorative background icon */}
+                    <div className="absolute -right-6 -bottom-6 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12"><LucideIcon name="Coins" size={160}/></div>
+                </TiltCard>
+            )
+
             return (
                 <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-7xl mx-auto">
                     {/* Header */}
@@ -659,45 +761,12 @@
                         </div>
                     ) : (
                     <>
-                    {/* 1. 核心指标 (Grid 4列 - 视觉升级) */}
+                    {/* 1. 核心指标 (Grid 4列 - 视觉还原) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* 左：今日营收 (更详细) */}
-                        <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden hover-lift group`}>
-                            <div className="relative z-10 flex flex-col h-full">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 opacity-90 text-xs font-bold mb-1 uppercase tracking-wider"><LucideIcon name="Wallet" size={14}/> 今日总收入</div>
-                                        <div className="text-4xl font-extrabold tracking-tight">¥{todayTotalIncome.toFixed(2)}</div>
-                                    </div>
-                                    <div className="text-right opacity-80">
-                                        <div className="text-xs font-bold">{todayStr}</div>
-                                        <div className="text-[10px] mt-0.5">{isTodayWorking ? '工作日' : '休息日'}</div>
-                                    </div>
-                                </div>
-                                
-                                {/* 详情分割线 */}
-                                <div className="flex-1 flex items-end">
-                                    <div className="w-full grid grid-cols-3 gap-2 text-center bg-white/10 rounded-xl p-2 backdrop-blur-sm border border-white/10">
-                                        <div className="border-r border-white/10">
-                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">课时费</div>
-                                            <div className="text-lg font-bold">¥{todayTotalClassFee.toFixed(0)}</div>
-                                        </div>
-                                        <div className="border-r border-white/10">
-                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">底薪摊</div>
-                                            <div className="text-lg font-bold">¥{todayBase.toFixed(0)}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-[10px] opacity-70 uppercase tracking-wider mb-1">餐补</div>
-                                            <div className="text-lg font-bold">¥{todayLunch}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Decorative background icon */}
-                             <div className="absolute -right-6 -bottom-6 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12"><LucideIcon name="Coins" size={160}/></div>
-                        </TiltCard>
+                        {/* 左：今日营收/替代卡片 - 占据两栏 */}
+                        {showTodayIncome ? <div className="col-span-1 md:col-span-2"><IncomeCard /></div> : <div className="col-span-1 md:col-span-2"><HiddenIncomeCard /></div>}
 
-                        {/* 学员总数 (新增) */}
+                        {/* 学员总数 */}
                         <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group">
                             <div className="flex justify-between items-start mb-4">
                                 <div className={`p-3 rounded-2xl bg-${theme.accent}-50 text-${theme.accent}-500`}><LucideIcon name="Users" size={24}/></div>
@@ -709,44 +778,24 @@
                             </div>
                         </TiltCard>
 
-                        {/* 教学质量 (合并) */}
-                        <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group">
-                            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">
-                                <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><LucideIcon name="Activity" size={16} className="text-indigo-500"/> 教学质量</div>
+                        {/* 本月绩效预测 */}
+                         <TiltCard className="glass-panel rounded-3xl p-6 flex-1 flex flex-col justify-center relative overflow-hidden hover-lift group">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                                    <LucideIcon name="PieChart" size={18} className="text-indigo-600"/> 本月预测
+                                </h3>
                             </div>
-                            
-                            <div className="space-y-4">
-                                {/* 回访率 */}
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">回访率</span>
-                                        <Trend curr={thisMonthStats.followUpRate} prev={lastMonthStats.followUpRate} isPercent={true} />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                        <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.followUpRate.toFixed(0)}%</span>
-                                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{width: `${thisMonthStats.followUpRate}%`}}></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 出勤率 */}
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">出勤率</span>
-                                        <Trend curr={thisMonthStats.attendanceRate} prev={lastMonthStats.attendanceRate} isPercent={true} />
-                                    </div>
-                                    <div className="flex items-end gap-2">
-                                        <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.attendanceRate.toFixed(0)}%</span>
-                                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full" style={{width: `${thisMonthStats.attendanceRate}%`}}></div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="space-y-1">
+                                <div className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">薪资预估 (税前)</div>
+                                <div className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">¥{monthTotalEstimated.toFixed(0)}</div>
                             </div>
+                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-hidden">
+                                <div className="h-full bg-slate-400" style={{width: '60%'}}></div>
+                            </div>
+                            <div className="mt-2 text-[10px] text-slate-400">预估 {workingDaysCount} 工作日</div>
                         </TiltCard>
                     </div>
-
+                    
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* 左侧：今日课程 */}
                         <div className="lg:col-span-2 glass-panel rounded-3xl p-8 flex flex-col h-[500px]">
@@ -875,6 +924,7 @@
                 const hoursToDeplete = remaining;
                 const daysToDeplete = (hoursToDeplete / 8) * 30;
                 const targetDate = new Date();
+                // FIX: 修正拼写错误 daysTo deplete -> daysToDeplete
                 targetDate.setDate(targetDate.getDate() + daysToDeplete);
                 const dateStr = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`;
                 if (remaining <= 4) return `预计${dateStr}用尽 (剩余4课次警告)`;
@@ -889,7 +939,12 @@
                 return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400"; 
             };
             
-            const filteredStudents = students.filter(s => s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            // 核心修改：使用 useMemo 实现按剩余课时从低到高排序
+            const filteredStudents = useMemo(() => {
+                return students
+                    .filter(s => s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .sort((a, b) => (a.remainingHours || 0) - (b.remainingHours || 0));
+            }, [students, searchTerm]);
 
             return (
                 <div className="p-4 space-y-6 pb-24 md:pb-4 pt-16 md:pt-4 animate-enter">
@@ -1052,8 +1107,7 @@
         }
 
         const AttendanceManager = () => {
-            const { courses, students, attendanceMode, handleAttendanceModeChange, theme, formatDate, exportToCSV, lcUpdate } = useAppData();
-            const addToast = useToast();
+            const { courses, students, attendanceMode, handleAttendanceModeChange, theme, formatDate, exportToCSV, lcUpdate, addToast } = useAppData(); // Make sure addToast is available here
             const currentMonth = formatDate(new Date()).slice(0,7);
             const week = Math.ceil(new Date().getDate()/7);
             
@@ -1063,7 +1117,46 @@
             const absents = [];
             courses.forEach(c => { if(c.dateStr.startsWith(currentMonth)) { Object.values(c.attendance||{}).forEach(a => { if(a.status==='present' || (a.status==='absent' && a.isMadeUp)) actual++; if(a.status==='absent' && !a.isMadeUp) absents.push({cname: c.className, date: c.dateStr, sid: a.studentId, cid: c.id}); }); } });
             const rate = target>0 ? (actual/target)*100 : 0;
-            const makeup = async (cid, sid) => { if(confirm("确认补课?")) { const course = courses.find(c => c.id === cid); if (course) { const newAtt = {...course.attendance, [sid]: {...course.attendance[sid], isMadeUp: true}}; await lcUpdate('Course', cid, { attendance: newAtt }); addToast("补课已记录", "success"); } } }
+            
+            // 修复后的 makeup 函数 (二次修正，确保 status 变更为 present)
+            const makeup = async (cid, sid) => { 
+                if(confirm("确认补课? (将会扣除学员 2 课时)")) {
+                    const course = courses.find(c => c.id === cid); 
+                    const student = students.find(s => s.id === sid); 
+
+                    if (!course || !student) {
+                        addToast("未找到课程或学员信息", "error");
+                        return;
+                    }
+                    
+                    // 1. 更新课程考勤：标记为已补课 (isMadeUp: true) 并且将状态改为 'present'
+                    const newAtt = {
+                        ...course.attendance, 
+                        [sid]: {
+                            ...course.attendance[sid], 
+                            status: 'present', // <-- 关键修正：将状态明确改为 'present'
+                            isMadeUp: true
+                        }
+                    }; 
+                    
+                    // 2. 扣除学员课时：补课成功，扣除 2 课时
+                    const newRemaining = (student.remainingHours || 0) - 2;
+
+                    // 1. 更新课程考勤
+                    const success1 = await lcUpdate('Course', cid, { attendance: newAtt });
+                    
+                    // 2. 更新学员课时 
+                    if (success1) {
+                         const success2 = await lcUpdate('Student', sid, { remainingHours: newRemaining });
+                         if(success2) {
+                             addToast(`${student.name} 补课成功，课时已扣除 (-2)，考勤状态已更新`, "success");
+                         } else {
+                             addToast("学员课时扣除失败，请手动检查", "error");
+                         }
+                    }
+                } 
+            }
+
             const exportAtt = () => { const rows = []; courses.forEach(c=>{ if(c.dateStr.startsWith(currentMonth)) { (c.studentIds||[]).forEach(sid=>{ const s = students.find(x=>x.id===sid); const a = c.attendance?.[sid]; rows.push([c.dateStr, c.className, s?.name||'未知', a?.status==='present'?'到':a?.status==='absent'?'缺':'未记', a?.isMadeUp?'是':'否']); }) } }); exportToCSV(`考勤_${currentMonth}.csv`, [['日期','课程','姓名','状态','已补课'],...rows]); };
             return (
                 <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6 md:space-y-8 pb-24 md:pb-6 pt-16 md:pt-4 animate-enter">
@@ -1099,8 +1192,13 @@
             // 本地持久化存储：教师等级、课时费基数
             const [teacherLevel, setTeacherLevel] = useState(localStorage.getItem('lms_teacher_level') || '初级 2 级');
             const [classFeeBase, setClassFeeBase] = useState(Number(localStorage.getItem('lms_class_fee_base')) || 8);
-            const [avatar, setAvatar] = useState(localStorage.getItem('lms_user_avatar') || '🦁');
             
+            // 新增状态：控制概览页今日收入显示
+            const [showTodayIncome, setShowTodayIncome] = useState(() => {
+                const saved = localStorage.getItem('lms_show_today_income');
+                return saved !== null ? JSON.parse(saved) : true; // 默认显示
+            });
+
             // 新增：语录状态
             const [quotes, setQuotes] = useState(() => {
                 try {
@@ -1111,8 +1209,8 @@
 
             useEffect(() => { localStorage.setItem('lms_teacher_level', teacherLevel); }, [teacherLevel]);
             useEffect(() => { localStorage.setItem('lms_class_fee_base', classFeeBase); }, [classFeeBase]);
-            useEffect(() => { localStorage.setItem('lms_user_avatar', avatar); }, [avatar]);
             useEffect(() => { localStorage.setItem('lms_quotes', JSON.stringify(quotes)); }, [quotes]);
+            useEffect(() => { localStorage.setItem('lms_show_today_income', showTodayIncome); }, [showTodayIncome]);
 
             const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
             const [attendanceMode, setAttendanceMode] = useState('scheduled');
@@ -1288,8 +1386,8 @@
                 classFeeBase, setClassFeeBase,
                 fetchAll, exportToCSV,
                 lcAdd, lcUpdate, lcDelete,
-                avatar, setAvatar,
-                quotes, setQuotes
+                quotes, setQuotes,
+                showTodayIncome, setShowTodayIncome
             };
 
             return (
@@ -1297,7 +1395,8 @@
                     <div className="flex h-screen bg-gray-100 dark:bg-slate-900 flex-col md:flex-row overflow-hidden font-sans transition-colors duration-300">
                         <div className={`hidden md:flex w-64 glass-sidebar flex-col z-20`}>
                             <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight">
-                                <div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white logo-breathe text-2xl`}>{avatar}</div>
+                                {/* 移除了动态头像，使用静态图标 */}
+                                <div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}><LucideIcon name="Award" size={24}/></div>
                                 <span className="text-slate-800 dark:text-white">Veape Pro</span>
                             </div>
                             <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
