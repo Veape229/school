@@ -249,7 +249,7 @@
                 opacity: 1;
             }
         }
-        /* --- 主题扩散过渡样式 (结束) --- */
+        /* --- 主题扩散过渡样式 (结束) */
     </style>
 </head>
 <body class="h-screen overflow-hidden selection:bg-indigo-200 selection:text-indigo-900 dark:selection:bg-indigo-500 dark:selection:text-white">
@@ -570,8 +570,7 @@
                         });
                     }
                     // Since we don't have a transaction history, this calculation is highly simplified and potentially inaccurate.
-                    // The log above only shows deduction events. To get the true log, we need to track manual updates too.
-                    // We'll keep the simplified version based on attendance deductions as a placeholder for the log.
+                    // The log above only shows deduction events. We'll keep the simplified version based on attendance deductions as a placeholder for the log.
                 });
                 
                 // Add a dummy initial purchase/remaining hours (we don't have this data)
@@ -595,10 +594,11 @@
                 if (!editStudent.name) return addToast("请填写姓名", "error");
                 const { id, ...data } = editStudent;
                 data.remainingHours = Number(data.remainingHours || 0); 
+                // StudentDetailPage的更新需要刷新，这里不跳过 fetchAll
                 let success = await lcUpdate('Student', id, data);
                 if(success) { 
                     setIsEditOpen(false); 
-                    await fetchAll(); // 强制刷新学员列表
+                    // lcUpdate现在会自动fetchAll
                     addToast("学员信息已更新", "success"); 
                 }
             };
@@ -742,6 +742,8 @@
             // 新增: 系统更新日志数据
             const UPDATE_HISTORY = [
             
+                
+                { version: "V1.1.1", date: formatDate(new Date()), changes: ["修复：回访管理系统在更新回访次数后，UI不会立即刷新的问题。"] },
                 { version: "V1.1.0", date: "2025-12-05", changes: ["新增：课程管理中支持**周期性排课**功能、学员管理加入**学员详情**功能，可以更直观看到考勤记录，课时交易记录等、课程教师任务可自定义。","修复：学员扣/返课时时，多次弹出提示的问题。"] },
                 { version: "V1.0.5", date: "2025-12-05", changes: ["新增：主题切换动画效果。","优化：调整主题颜色，移除黑色主题，新增活力橙、海洋青和深海蓝主题。"] },
                 { version: "V1.0.4", date: "2025-12-04", changes: ["新增：排课及班级管理，添加学生搜索功能。", "优化：考勤目标计算逻辑（预估模式改为学生量*4）。", "修复：考勤管理中补课后课时扣除逻辑。"] },
@@ -1440,6 +1442,7 @@
                 if (!newStudent.name) return addToast("请填写姓名", "error");
                 const { id, ...data } = newStudent;
                 data.remainingHours = Number(data.remainingHours || 0); 
+                // StudentManager的更新不跳过 fetchAll
                 let success = id ? await lcUpdate('Student', id, data) : await lcAdd('Student', data);
                 if(success) { setIsAddOpen(false); setNewStudent({ gender: '男', remainingHours: 0 }); addToast("保存成功", "success"); }
             };
@@ -1680,14 +1683,15 @@
                 // 2. 更新课程信息 (包括最新的考勤状态)
                 let success;
                 if (id) {
-                    // 现有课程：使用 lcUpdate（局部更新）
+                    // 现有课程：使用 lcUpdate（局部更新）并跳过 fetchAll
                     try {
                         const obj = AV.Object.createWithoutData('Course', id);
                         Object.keys(data).forEach(k => {
                             if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return;
                             obj.set(k, data[k]);
                         });
-                        await obj.save();
+                        // 传递 skipFetch: true
+                        await lcUpdate('Course', id, data, true); 
                         success = true;
                     } catch (e) {
                         addToast("更新课程失败: " + e.message, "error"); 
@@ -1711,7 +1715,8 @@
                             try {
                                 const sObj = AV.Object.createWithoutData('Student', sid);
                                 sObj.set('remainingHours', newRemaining);
-                                await sObj.save();
+                                // 传递 skipFetch: true
+                                await lcUpdate('Student', sid, {remainingHours: newRemaining}, true); 
                                 const updateMsg = delta < 0 ? `已扣除 ${student.name} ${Math.abs(delta)} 课时` : `已返还 ${student.name} ${Math.abs(delta)} 课时`;
                                 addToast(updateMsg, delta < 0 ? "success" : "info");
                             } catch (e) {
@@ -1802,7 +1807,7 @@
             };
 
             const handleStudentSelect = (sid) => { 
-                if(sid && !newCourse.studentIds?.includes(sid)) { 
+                if (sid && !newCourse.studentIds?.includes(sid)) { 
                     setNewCourse(prev => ({...prev, studentIds: [...(prev.studentIds||[]), sid]})); 
                     setStudentSearchTerm(''); // 添加后清空搜索
                 }
@@ -1810,7 +1815,7 @@
             const handleClassGroupSelect = (e) => { 
                 const gid = e.target.value; 
                 const g = classGroups.find(x => x.id === gid); 
-                if(g) { 
+                if (g) { 
                     setNewCourse(prev => { 
                         const currentIds = prev.studentIds || []; 
                         // 修复：确保 studentIds 始终是数组，并正确合并
@@ -2041,7 +2046,7 @@
                                             {classGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                                         </select>
                                         <div className="relative flex-1">
-                                            <div className="flex items-center border border-gray-200 dark:border-slate-600 p-2 rounded-lg bg-white dark:bg-slate-700 dark:text-white hover:border-gray-300 transition-colors">
+                                            <div className="flex items-center border border-gray-200 dark:border-slate-600 p-2 rounded-lg bg-white dark:bg-slate-700 dark:text-white transition-colors">
                                                 <LucideIcon name="Search" size={14} className="text-gray-400 mr-2"/> 
                                                 <input type="text" placeholder="搜索学员添加..." className="w-full text-xs bg-transparent outline-none" value={studentSearchTerm} onChange={e => setStudentSearchTerm(e.target.value)} />
                                             </div>
@@ -2052,7 +2057,7 @@
                                                             {s.name} ({s.remainingHours}h)
                                                         </div>
                                                     ))}
-                                                    {searchableStudents.length > 5 && <div className="text-center p-2 text-xs text-gray-400 border-t border-gray-100 dark:border-slate-600">...</div>}
+                                                    {studentSearchTerm && searchableStudents.length > 5 && <div className="text-center p-2 text-xs text-gray-400 border-t border-gray-100 dark:border-slate-600">...</div>}
                                                 </div>
                                             )}
                                             {studentSearchTerm && searchableStudents.length === 0 && (
@@ -2171,6 +2176,7 @@
                 const { id, ...data } = group; 
                 // 确保 studentIds 是一个数组
                 data.studentIds = data.studentIds || [];
+                // ClassGroupManager的更新不跳过 fetchAll
                 let success = id ? await lcUpdate('ClassGroup', id, data) : await lcAdd('ClassGroup', data); 
                 if(success) { setIsEdit(false); setGroup({}); addToast("保存成功", "success"); } 
             };
@@ -2324,12 +2330,19 @@
 
         // 4. 回访管理
         const FollowUpManager = () => {
-            const { students, classGroups, followUps, formatDate, theme, exportToCSV, lcAdd, lcUpdate } = useAppData();
+            const { students, classGroups, followUps, formatDate, theme, exportToCSV, lcAdd, lcUpdate, fetchAll } = useAppData();
             const addToast = useToast(); 
             const currentMonth = formatDate(new Date()).slice(0,7);
             const total = students.length * 2; // 每人每月 2 次回访目标
-            const done = followUps.filter(f => f.monthStr === currentMonth).reduce((s,r)=>s+r.count,0);
+            // 修复：确保 followUps 不为 null 且是数组
             
+           // 1. 最终显示的回访总数 (排除手动校对记录和无效学员ID)
+                       const done = Array.isArray(followUps) 
+                           ? followUps.filter(f => f.monthStr === currentMonth && 
+                                                   f.studentId !== 'manual_override' && 
+                                                   students.some(s => s.id === f.studentId) // 仅计算有效的学员ID
+                                             ).reduce((s,r)=>s+r.count,0) 
+                           : 0;
             const groupedData = useMemo(() => {
                 const groups = classGroups.map(g => { 
                     const groupStudents = (g.studentIds || []).map(sid => students.find(s => s.id === sid)).filter(Boolean); 
@@ -2349,14 +2362,15 @@
             }, [students, classGroups]);
 
             const toggle = async (sid, idx) => { 
+                
                 const ex = followUps.find(f => f.studentId === sid && f.monthStr === currentMonth); 
                 const newCount = (ex && ex.count === idx + 1) ? idx : idx + 1; // 切换逻辑
                 
                 if (ex) {
-                    // 更新现有记录
+                    // 更新现有记录。由于 lcUpdate 内部会调用 fetchAll，UI 将自动更新。
                     await lcUpdate('FollowUp', ex.id, { count: newCount }); 
                 } else {
-                    // 创建新记录
+                    // 创建新记录。lcAdd 内部会调用 fetchAll。
                     await lcAdd('FollowUp', { studentId: sid, monthStr: currentMonth, count: newCount }); 
                 }
                 addToast(`回访次数已更新为 ${newCount} 次`, "info");
@@ -2366,6 +2380,11 @@
                 const rows = []; 
                 groupedData.forEach(g => { 
                     g.students.forEach(s => { 
+                        // 忽略手动校对记录的导出
+						// 新增：检查该学生ID是否存在于当前的 students 列表中
+	
+                        if (!students.find(st => st.id === s.id)) return;
+                        if (s.id === 'manual_override') return;
                         const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth); 
                         rows.push([g.name, s.name, currentMonth, rec?rec.count:0]); 
                     }); 
@@ -2397,6 +2416,8 @@
                             <div className="text-3xl font-bold text-yellow-300">{total>0?Math.round(done/total*100):0}%</div>
                         </div>
                     </div>
+                    
+                    
                     {/* 回访列表 */}
                     <div className="space-y-6">
                         {groupedData.map((group, gIdx) => (
@@ -2418,6 +2439,13 @@
                                         </thead>
                                         <tbody className="divide-y divide-gray-50 dark:divide-slate-700 bg-white dark:bg-slate-800">
                                             {group.students.map(s => { 
+                                                // 忽略手动校对记录的显示
+                                                if (s.id === 'manual_override') return null;
+												// 忽略手动校对记录的显示
+												if (s.id === 'manual_override') return null;
+												// 确保学生 ID 存在于当前的 students 列表中
+												if (!students.find(st => st.id === s.id)) return null; 
+										
                                                 const rec = followUps.find(f => f.studentId === s.id && f.monthStr === currentMonth); 
                                                 const c = rec?.count||0; 
                                                 return (
@@ -2456,6 +2484,7 @@
                         ))}
                         {groupedData.length === 0 && students.length === 0 && <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700"><div className="text-gray-300 mb-2"><LucideIcon name="Users" size={48} className="mx-auto"/></div><p className="text-gray-400">暂无数据，请先前往“学员管理”添加学员</p></div>}
                     </div>
+                    {/* 移除手动校对模态框 */}
                 </div>
             )
         }
@@ -2531,7 +2560,8 @@
                     const newRemaining = (student.remainingHours || 0) - 2;
 
                     // 1. 更新课程考勤
-                    const success1 = await lcUpdate('Course', cid, { attendance: newAtt });
+                    // 传递 skipFetch: true
+                    const success1 = await lcUpdate('Course', cid, { attendance: newAtt }, true); 
                     
                     // 2. 更新学员课时 
                     if (success1) {
@@ -2539,10 +2569,11 @@
                          try {
                             const sObj = AV.Object.createWithoutData('Student', sid);
                             sObj.set('remainingHours', newRemaining);
-                            await sObj.save();
+                            // 传递 skipFetch: true
+                            await lcUpdate('Student', sid, {remainingHours: newRemaining}, true); 
                             
                             addToast(`${student.name} 补课成功，课时已扣除 (-2)，考勤状态已更新`, "success");
-                            await fetchAll(); // 刷新数据
+                            await fetchAll(); // 最终刷新数据
                          } catch (e) {
                              addToast("学员课时扣除失败，请手动检查", "error");
                          }
@@ -2834,7 +2865,8 @@
                     return false; 
                 }
             };
-            const lcUpdate = async (className, id, data) => {
+            // 修复 lcUpdate：添加 skipFetch 参数，默认为 false
+            const lcUpdate = async (className, id, data, skipFetch = false) => {
                 if (typeof AV === 'undefined' || !window.isLCReady) {
                     addToast("云端服务未连接，请刷新重试", "error");
                     return false;
@@ -2846,8 +2878,10 @@
                         obj.set(k, data[k]);
                     });
                     await obj.save();
-                    // 局部更新，不执行全局 fetchAll，由调用者负责刷新
-                    // await fetchAll(); 
+                    // 只有当 skipFetch 为 false 时才调用 fetchAll
+                    if (!skipFetch) {
+                        await fetchAll(); 
+                    }
                     return true;
                 } catch (e) { 
                     addToast("更新失败: " + e.message, "error"); 
