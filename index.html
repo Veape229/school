@@ -478,7 +478,18 @@
         // --- 全局常量定义 ---
                 // ... (THEMES 保持不变)
                 const DEFAULT_QUOTES = ["今天也是元气满满的一天！✨", "教育的本质是唤醒。🌱", "种一棵树最好的时间是十年前，其次是现在。🌲", "星光不问赶路人。⭐"];
-                
+                const LEVEL_SALARY_MAP = {
+					'初级 3 级':900,
+                    '初级 2 级': 1000,
+                    '初级 1 级': 1100,
+                    '中级 3 级': 1200,
+                    '中级 2 级': 1300,
+                    '中级 1 级': 1400,
+                    '高级 3 级': 1600,
+                    '高级 2 级': 1800,
+                    '高级 1 级': 2000,
+                    '默认': 1000,
+                };
                 // 修改：固定的课程任务列表 (5项)
                 const DEFAULT_TASKS = [
                             { id: 'teachingDone', name: '授课完成' },
@@ -491,7 +502,6 @@
         // --- Context ---
         const AppDataContext = createContext(null);
         const ToastContext = createContext(null);
-
         // --- 基础设施组件 ---
         const ToastProvider = ({ children }) => {
             const [toasts, setToasts] = useState([]);
@@ -934,422 +944,524 @@
         };
         // --- 结束学员详情页子组件 ---
         // ** 移动 SettingsManager 到这里 **
-        const SettingsManager = () => {
-            const { 
-                teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, theme, 
-                students, courses, classGroups, followUps, fetchAll,
-                quotes, setQuotes,
-                showTodayIncome, setShowTodayIncome,
-                handleThemeChange,formatDate
-            } = useAppData();
-            const addToast = useToast(); 
-            
-            // 使用静态日期字符串，防止 formatDate 未定义导致页面崩溃
-            // ... (在 SettingsManager 组件内)
-            
-                        // 使用静态日期字符串，防止 formatDate 未定义导致页面崩溃
-                        const UPDATE_HISTORY = [
-            				{ version: "V1.2.1", date: formatDate(new Date()), changes: ["新增：课程管理排课时，支持选择自定义的扣除课时数（如1课时、1.5课时），以便精确扣费。","优化：课程卡片（周/日视图）移除了冗余的课时标准信息，仅显示学员人数和时间段，保持界面简洁。","修复：解决了课程管理中，因为 JSX 结构导致的 Babel 语法解析错误。"] },
-            				{ version: "V1.2.0", date: "2025-12-05", changes: ["新增：首页今日课程面板参加快捷课程管理功能，并且课程出勤情况会进行显示","优化：课程管理界面用颜色区分了已授课和未授课，出勤率修改了计算逻辑，增加实时进度模式，删除课程教师任务定制功能，","修复：更改当日课时计算逻辑，不包括未出勤学员课时。"] },
-                            { version: "V1.1.1", date: "2025-12-05", changes: ["修复：回访管理系统在更新回访次数后，UI不会立即刷新的问题。"] },
-                            { version: "V1.1.0", date: "2025-12-05", changes: ["新增：课程管理中支持**周期性排课**功能、学员管理加入**学员详情**功能，可以更直观看到考勤记录，课时交易记录等、课程教师任务可自定义。","修复：学员扣/返课时时，多次弹出提示的问题。"] },
-                            { version: "V1.0.5", date: "2025-12-05", changes: ["新增：主题切换动画效果。","优化：调整主题颜色，移除黑色主题，新增活力橙、海洋青和深海蓝主题。"] },
-                            { version: "V1.0.4", date: "2025-12-04", changes: ["新增：排课及班级管理，添加学生搜索功能。", "优化：考勤目标计算逻辑（预估模式改为学生量*4）。", "修复：考勤管理中补课后课时扣除逻辑。"] },
-                        	{ version: "V1.0.3", date: "2025-12-02", changes: ["新增：系统主题换色功能，系统版本更新记录卡片 ","优化：系统整体界面设计。"] },
-                            { version: "V1.0.2", date: "2025-12-01", changes: ["新增：概览页支持隐藏今日收入。", "优化：学员管理列表按剩余课时升序排序。"] },
-                            { version: "V1.0.1", date: "2025-11-29", changes: ["新增：个性化语录管理功能，收入计算功能。", "修复：周导航器在月视图下跳转错误。"] },
-                            { version: "V1.0.0", date: "2025-11-29", changes: ["系统初始化，包含概览、课程、学员、班级、回访、考勤等核心功能。"] },
-                        ];
-            			
-                        // ... (其他 SettingsManager 代码保持不变)
-			
-            const [newQuote, setNewQuote] = useState(""); 
-
-            // 监听主题变化
-            useEffect(() => {
-                if (theme && theme.primary) {
-                    document.documentElement.style.setProperty('--primary-color', tailwind.config.theme.extend.colors[theme.primary]?.[600] || '#3b82f6');
-                }
-            }, [theme]);
-
-            const handleSave = () => {
-                localStorage.setItem('lms_teacher_level', teacherLevel);
-                localStorage.setItem('lms_class_fee_base', classFeeBase);
-                localStorage.setItem('lms_quotes', JSON.stringify(quotes));
-                localStorage.setItem('lms_show_today_income', showTodayIncome);
-                addToast("设置已保存", "success");
-            }
-            
-            const handleAddQuote = () => {
-                if (!newQuote.trim()) return addToast("内容不能为空", "error");
-                const currentQuotes = Array.isArray(quotes) ? quotes : [];
-                setQuotes([...currentQuotes, newQuote.trim()]);
-                setNewQuote("");
-                addToast("语录已添加", "success");
-            };
-
-            const handleDeleteQuote = (index) => {
-                showConfirmModal("确定删除这条语录吗？", () => {
-                    const newQuotes = [...(quotes || [])];
-                    newQuotes.splice(index, 1);
-                    setQuotes(newQuotes);
-                    addToast("语录已删除", "success");
-                });
-            };
-            
-            const handleExport = () => {
-                const backupData = {
-                    version: "1.2.1",
-                    timestamp: new Date().toISOString(),
-                    students, courses, classGroups, followUps, quotes
-                };
-                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `veape_backup.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                addToast("备份文件已下载", "success");
-            };
-
-            const handleImport = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        if(!data.students || !data.classGroups) throw new Error("无效的备份文件");
-                        addToast("开始恢复数据...", "info");
-                        
-                        // 辅助恢复函数
-                        const restoreItem = async (className, item) => {
-                            const { id, createdAt, updatedAt, objectId, ...payload } = item;
-                            try {
-                                const obj = AV.Object.createWithoutData(className, id);
-                                Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, payload[k]); });
-                                await obj.save();
-                            } catch (err) {
-                                const NewObj = AV.Object.extend(className);
-                                const newObj = new NewObj();
-                                Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; newObj.set(k, payload[k]); });
-                                await newObj.save();
-                            }
+        // ** 移动 SettingsManager 到这里 **
+                const SettingsManager = () => {
+                    const { 
+                        teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, theme, 
+                        students, courses, classGroups, followUps, fetchAll,
+                        quotes, setQuotes,
+                        showTodayIncome, setShowTodayIncome,
+                        handleThemeChange,formatDate
+                    } = useAppData();
+                    const addToast = useToast(); 
+                    
+                    // 使用静态日期字符串，防止 formatDate 未定义导致页面崩溃
+                    // ... (在 SettingsManager 组件内)
+                    
+                                // 使用静态日期字符串，防止 formatDate 未定义导致页面崩溃
+                                const UPDATE_HISTORY = [
+                                            				{ version: "V1.2.2", date: formatDate(new Date()), changes: [
+                                                                "新增：系统设置中加入**职级选择**功能，岗位工资与职级动态关联。",
+                                                                "修复：修正了月度薪资计算逻辑，本月排课未上课课程将不计入本月薪资预测",
+																"优化：优化调整了工作日计算逻辑，周一周二将不计算薪资。"
+                                                   
+                                                            ] },
+                                            				{ version: "V1.2.1", date: "2025-12-07", changes: ["新增：课程管理排课时，支持选择自定义的扣除课时数（如1课时、1.5课时），以便精确扣费。","优化：课程卡片（周/日视图）移除了冗余的课时标准信息，仅显示学员人数和时间段，保持界面简洁。","修复：解决了课程管理中，因为 JSX 结构导致的 Babel 语法解析错误。"] },
+                                            				{ version: "V1.2.0", date: "2025-12-05", changes: ["新增：首页今日课程面板参加快捷课程管理功能，并且课程出勤情况会进行显示","优化：课程管理界面用颜色区分了已授课和未授课，出勤率修改了计算逻辑，增加实时进度模式，删除课程教师任务定制功能，","修复：更改当日课时计算逻辑，不包括未出勤学员课时。"] },
+                                                            { version: "V1.1.1", date: "2025-12-05", changes: ["修复：回访管理系统在更新回访次数后，UI不会立即刷新的问题。"] },
+                                                            { version: "V1.1.0", date: "2025-12-05", changes: ["新增：课程管理中支持**周期性排课**功能、学员管理加入**学员详情**功能，可以更直观看到考勤记录，课时交易记录等、课程教师任务可自定义。","修复：学员扣/返课时时，多次弹出提示的问题。"] },
+                                                            { version: "V1.0.5", date: "2025-12-05", changes: ["新增：主题切换动画效果。","优化：调整主题颜色，移除黑色主题，新增活力橙、海洋青和深海蓝主题。"] },
+                                                            { version: "V1.0.4", date: "2025-12-04", changes: ["新增：排课及班级管理，添加学生搜索功能。", "优化：考勤目标计算逻辑（预估模式改为学生量*4）。", "修复：考勤管理中补课后课时扣除逻辑。"] },
+                                                        	{ version: "V1.0.3", date: "2025-12-02", changes: ["新增：系统主题换色功能，系统版本更新记录卡片 ","优化：系统整体界面设计。"] },
+                                                            { version: "V1.0.2", date: "2025-12-01", changes: ["新增：概览页支持隐藏今日收入。", "优化：学员管理列表按剩余课时升序排序。"] },
+                                                            { version: "V1.0.1", date: "2025-11-29", changes: ["新增：个性化语录管理功能，收入计算功能。", "修复：周导航器在月视图下跳转错误。"] },
+                                                            { version: "V1.0.0", date: "2025-11-29", changes: ["系统初始化，包含概览、课程、学员、班级、回访、考勤等核心功能。"] },
+                                                        ];
+                                // ... (其他 SettingsManager 代码保持不变)
+        			
+                    const [newQuote, setNewQuote] = useState(""); 
+                    
+                    // 获取所有职级列表 (排除默认值)
+                    const levelOptions = useMemo(() => Object.keys(LEVEL_SALARY_MAP).filter(k => k !== '默认'), []);
+        
+                    // 监听主题变化
+                    useEffect(() => {
+                        if (theme && theme.primary) {
+                            document.documentElement.style.setProperty('--primary-color', tailwind.config.theme.extend.colors[theme.primary]?.[600] || '#3b82f6');
+                        }
+                    }, [theme]);
+        
+                    const handleSave = () => {
+                        // 职级保存在 localStorage，应用刷新时重新读取
+                        localStorage.setItem('lms_teacher_level', teacherLevel);
+                        localStorage.setItem('lms_class_fee_base', classFeeBase);
+                        localStorage.setItem('lms_quotes', JSON.stringify(quotes));
+                        localStorage.setItem('lms_show_today_income', showTodayIncome);
+                        addToast("设置已保存", "success");
+                    }
+                    
+                    const handleAddQuote = () => {
+                        if (!newQuote.trim()) return addToast("内容不能为空", "error");
+                        const currentQuotes = Array.isArray(quotes) ? quotes : [];
+                        setQuotes([...currentQuotes, newQuote.trim()]);
+                        setNewQuote("");
+                        addToast("语录已添加", "success");
+                    };
+        
+                    const handleDeleteQuote = (index) => {
+                        showConfirmModal("确定删除这条语录吗？", () => {
+                            const newQuotes = [...(quotes || [])];
+                            newQuotes.splice(index, 1);
+                            setQuotes(newQuotes);
+                            addToast("语录已删除", "success");
+                        });
+                    };
+                    
+                    const handleExport = () => {
+                        const backupData = {
+                            version: "1.2.1",
+                            timestamp: new Date().toISOString(),
+                            students, courses, classGroups, followUps, quotes
                         };
-
-                        for (const s of data.students) await restoreItem('Student', s);
-                        for (const g of data.classGroups) await restoreItem('ClassGroup', g);
-                        for (const c of data.courses) await restoreItem('Course', c);
-                        for (const f of data.followUps) await restoreItem('FollowUp', f);
-                        if (data.quotes && Array.isArray(data.quotes)) setQuotes(data.quotes);
-
-                        await fetchAll();
-                        addToast("数据恢复完成！", "success");
-                    } catch (err) {
-                        console.error(err);
-                        addToast("恢复失败: " + err.message, "error");
-                    } finally { e.target.value = ''; }
-                };
-                reader.readAsText(file);
-            };
-
-            return (
-                <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-6xl mx-auto">
-                    <div className="flex justify-between items-end mb-2">
-                        <div>
-                            <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">
-                                <LucideIcon name="Settings" size={32} className={`text-${theme.primary}-500 animate-spin-slow`}/> 
-                                系统设置
-                            </h2>
-                            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">个性化配置您的工作台</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-                        {/* 卡片 1: 常规选项 */}
-                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
-                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-2xl bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center shadow-inner`}><LucideIcon name="Settings" size={22}/></div>
-                                常规选项
-                            </h3>
-                            <div className="space-y-8 flex-1">
-                                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-800/50 flex justify-between items-center shadow-sm">
-                                    <div>
-                                        <label htmlFor="showIncomeToggle" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1 cursor-pointer">
-                                            显示今日收入
-                                        </label>
-                                        <p className="text-xs text-slate-400">在概览页卡片中显示敏感的薪资数据</p>
-                                    </div>
-                                    <div className="toggle-switch">
-                                        <input type="checkbox" id="showIncomeToggle" checked={showTodayIncome} onChange={() => setShowTodayIncome(!showTodayIncome)} />
-                                        <label htmlFor="showIncomeToggle"></label>
-                                    </div>
-                                </div>
+                        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `veape_backup.json`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        addToast("备份文件已下载", "success");
+                    };
+        
+                    const handleImport = async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async (event) => {
+                            try {
+                                const data = JSON.parse(event.target.result);
+                                if(!data.students || !data.classGroups) throw new Error("无效的备份文件");
+                                addToast("开始恢复数据...", "info");
+                                
+                                // 辅助恢复函数
+                                const restoreItem = async (className, item) => {
+                                    const { id, createdAt, updatedAt, objectId, ...payload } = item;
+                                    try {
+                                        const obj = AV.Object.createWithoutData(className, id);
+                                        Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, payload[k]); });
+                                        await obj.save();
+                                    } catch (err) {
+                                        const NewObj = AV.Object.extend(className);
+                                        const newObj = new NewObj();
+                                        Object.keys(payload).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; newObj.set(k, payload[k]); });
+                                        await newObj.save();
+                                    }
+                                };
+        
+                                for (const s of data.students) await restoreItem('Student', s);
+                                for (const g of data.classGroups) await restoreItem('ClassGroup', g);
+                                for (const c of data.courses) await restoreItem('Course', c);
+                                for (const f of data.followUps) await restoreItem('FollowUp', f);
+                                if (data.quotes && Array.isArray(data.quotes)) setQuotes(data.quotes);
+        
+                                await fetchAll();
+                                addToast("数据恢复完成！", "success");
+                            } catch (err) {
+                                console.error(err);
+                                addToast("恢复失败: " + err.message, "error");
+                            } finally { e.target.value = ''; }
+                        };
+                        reader.readAsText(file);
+                    };
+        
+                    return (
+                        <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-6xl mx-auto">
+                            <div className="flex justify-between items-end mb-2">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">教师评级</label>
-                                    <input className="w-full border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all text-slate-700 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={teacherLevel} onChange={e=>setTeacherLevel(e.target.value)} placeholder="例如：初级 2 级" />
-                                </div>
-                                <div className="pt-6 border-t border-slate-100 dark:border-slate-700">
-                                    <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wider">课时费基数 (元/课时)</label>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-200 font-bold text-2xl shadow-sm border border-slate-100 dark:border-slate-600">¥</div>
-                                        <input type="number" className="flex-1 border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all font-mono font-bold text-2xl text-slate-800 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={classFeeBase} onChange={e=>setClassFeeBase(Number(e.target.value))} />
-                                    </div>
+                                    <h2 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">
+                                        <LucideIcon name="Settings" size={32} className={`text-${theme.primary}-500 animate-spin-slow`}/> 
+                                        系统设置
+                                    </h2>
+                                    <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">个性化配置您的工作台</p>
                                 </div>
                             </div>
-                            <div className="pt-8 mt-auto">
-                                <button onClick={handleSave} className={`w-full bg-${theme.primary}-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-600 hover:scale-[1.02] active:scale-95 transition-all hover-jelly`}>保存所有设置</button>
-                            </div>
-                        </TiltCard>
-
-                        {/* 卡片 2: 个性化语录 (已恢复) */}
-                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
-                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center shadow-inner"><LucideIcon name="Quote" size={22}/></div>
-                                个性化语录
-                            </h3>
-                            <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
-                                {(quotes || []).map((q, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 group">
-                                        <div className="flex-1 bg-white/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 shadow-sm italic relative">
-                                            <span className="absolute -top-2 -left-1 text-2xl text-slate-200 dark:text-slate-600">“</span>
-                                            {q}
+        
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                                {/* 卡片 1: 常规选项 */}
+                                <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
+                                    <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-2xl bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center shadow-inner`}><LucideIcon name="Settings" size={22}/></div>
+                                        常规选项
+                                    </h3>
+                                    <div className="space-y-8 flex-1">
+                                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-800/50 flex justify-between items-center shadow-sm">
+                                            <div>
+                                                <label htmlFor="showIncomeToggle" className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1 cursor-pointer">
+                                                    显示今日收入
+                                                </label>
+                                                <p className="text-xs text-slate-400">在概览页卡片中显示敏感的薪资数据</p>
+                                            </div>
+                                            <div className="toggle-switch">
+                                                <input type="checkbox" id="showIncomeToggle" checked={showTodayIncome} onChange={() => setShowTodayIncome(!showTodayIncome)} />
+                                                <label htmlFor="showIncomeToggle"></label>
+                                            </div>
                                         </div>
-                                        <button onClick={() => handleDeleteQuote(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                                            <LucideIcon name="Trash2" size={16}/>
-                                        </button>
-                                    </div>
-                                ))}
-                                {(!quotes || quotes.length === 0) && <div className="text-center text-slate-400 text-sm py-4">暂无语录，快来添加一条吧~</div>}
-                            </div>
-                            <div className="pt-6 mt-auto border-t border-slate-100 dark:border-slate-700">
-                                <div className="flex gap-2">
-                                    <input 
-                                        className="flex-1 border border-slate-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none transition-all text-sm dark:bg-slate-800 dark:text-white" 
-                                        placeholder="输入一句激励语..." 
-                                        value={newQuote}
-                                        onChange={e => setNewQuote(e.target.value)}
-                                        onKeyPress={e => e.key === 'Enter' && handleAddQuote()}
-                                    />
-                                    <button onClick={handleAddQuote} className="bg-pink-500 text-white p-3 rounded-xl hover:bg-pink-600 active:scale-95 transition-all shadow-lg shadow-pink-200 dark:shadow-none">
-                                        <LucideIcon name="Plus" size={20}/>
-                                    </button>
-                                </div>
-                            </div>
-                        </TiltCard>
-
-                        {/* 卡片 3: 版本更新记录 */}
-                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
-                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner"><LucideIcon name="Cloud" size={22}/></div>
-                                系统更新日志
-                            </h3>
-                            <div className="space-y-6 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
-                                {UPDATE_HISTORY.map((item, index) => (
-                                    <div key={item.version} className={`pb-4 ${index < UPDATE_HISTORY.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
-                                        <div className="flex items-center justify-between text-sm font-bold mb-1">
-                                            <span className={`text-slate-800 dark:text-white flex items-center gap-2 ${index === 0 ? 'text-lg text-emerald-600 dark:text-emerald-400' : ''}`}>{item.version}</span>
-                                            <span className="text-xs text-slate-400">{item.date}</span>
-                                        </div>
-                                        <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 list-disc list-inside ml-2">
-                                            {item.changes.map((change, i) => <li key={i}>{change}</li>)}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
-                        </TiltCard>
-
-                        {/* 卡片 4: 数据备份 (跨 2 列) */}
-                        <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-2 xl:col-span-3">
-                            <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center shadow-inner"><LucideIcon name="Database" size={22}/></div>
-                                数据安全中心
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all group cursor-pointer shadow-sm hover:shadow-md" onClick={handleExport}>
-                                    <div className="flex items-center gap-5 mb-4">
-                                        <div className="w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="Download" size={24}/></div>
+                                        
+                                        {/* 修正：教师评级改为下拉选择 */}
                                         <div>
-                                            <div className="font-bold text-slate-800 dark:text-white text-lg">导出全站备份</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">生成包含所有学员、课程记录的 JSON 文件</div>
+                                            <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">教师评级</label>
+                                            <select 
+                                                className="w-full border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all text-slate-700 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" 
+                                                value={teacherLevel} 
+                                                onChange={e=>setTeacherLevel(e.target.value)}
+                                            >
+                                                {levelOptions.map(level => (
+                                                    <option key={level} value={level}>{level} (岗位: ¥{LEVEL_SALARY_MAP[level]})</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-400 mt-2">职级变动将影响您的固定岗位工资。</p>
+                                        </div>
+                                        
+                                        <div className="pt-6 border-t border-slate-100 dark:border-slate-700">
+                                            <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 uppercase tracking-wider">常规课课时费基数 (元/课时)</label>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-200 font-bold text-2xl shadow-sm border border-slate-100 dark:border-slate-600">¥</div>
+                                                <input type="number" className="flex-1 border border-slate-200 dark:border-slate-600 p-4 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-slate-700 focus:border-blue-400 dark:focus:border-slate-500 outline-none transition-all font-mono font-bold text-2xl text-slate-800 dark:text-white bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm" value={classFeeBase} onChange={e=>setClassFeeBase(Number(e.target.value))} />
+                                            </div>
+                                            <p className="text-xs text-slate-400 mt-2">注：课程课时费计算公式为 `1.5 * 基数 * (实际扣除课时/2)`</p>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end">
-                                        <span className="text-xs font-bold text-blue-500 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 px-3 py-1.5 rounded-full group-hover:bg-blue-100 dark:group-hover:bg-blue-800 transition-colors">立即下载</span>
+                                    <div className="pt-8 mt-auto">
+                                        <button onClick={handleSave} className={`w-full bg-${theme.primary}-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-${theme.primary}-500/30 hover:bg-${theme.primary}-600 hover:scale-[1.02] active:scale-95 transition-all hover-jelly`}>保存所有设置</button>
                                     </div>
-                                </div>
-                                <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-500 transition-all group relative shadow-sm hover:shadow-md">
-                                    <div className="flex items-center gap-5 mb-4">
-                                        <div className="w-12 h-12 bg-green-500 text-white rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="UploadCloud" size={24}/></div>
-                                        <div>
-                                            <div className="font-bold text-slate-800 dark:text-white text-lg">恢复历史数据</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">上传备份文件覆盖当前系统数据</div>
+                                </TiltCard>
+        
+                                {/* 卡片 2: 个性化语录 (已恢复) */}
+                                <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
+                                    <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center shadow-inner"><LucideIcon name="Quote" size={22}/></div>
+                                        个性化语录
+                                    </h3>
+                                    <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
+                                        {(quotes || []).map((q, idx) => (
+                                            <div key={idx} className="flex items-center gap-3 group">
+                                                <div className="flex-1 bg-white/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 shadow-sm italic relative">
+                                                    <span className="absolute -top-2 -left-1 text-2xl text-slate-200 dark:text-slate-600">“</span>
+                                                    {q}
+                                                </div>
+                                                <button onClick={() => handleDeleteQuote(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                                    <LucideIcon name="Trash2" size={16}/>
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(!quotes || quotes.length === 0) && <div className="text-center text-slate-400 text-sm py-4">暂无语录，快来添加一条吧~</div>}
+                                    </div>
+                                    <div className="pt-6 mt-auto border-t border-slate-100 dark:border-slate-700">
+                                        <div className="flex gap-2">
+                                            <input 
+                                                className="flex-1 border border-slate-200 dark:border-slate-600 p-3 rounded-xl focus:ring-2 focus:ring-pink-200 outline-none transition-all text-sm dark:bg-slate-800 dark:text-white" 
+                                                placeholder="输入一句激励语..." 
+                                                value={newQuote}
+                                                onChange={e => setNewQuote(e.target.value)}
+                                                onKeyPress={e => e.key === 'Enter' && handleAddQuote()}
+                                            />
+                                            <button onClick={handleAddQuote} className="bg-pink-500 text-white p-3 rounded-xl hover:bg-pink-600 active:scale-95 transition-all shadow-lg shadow-pink-200 dark:shadow-none">
+                                                <LucideIcon name="Plus" size={20}/>
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="relative">
-                                        <input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={false} /> 
-                                        <div className="flex justify-end">
-                                            <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1.5 rounded-full group-hover:bg-green-100 dark:group-hover:bg-green-800 transition-colors flex items-center gap-2">{'点击上传文件'}</span>
+                                </TiltCard>
+        
+                                {/* 卡片 3: 版本更新记录 */}
+                                <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift">
+                                    <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-inner"><LucideIcon name="Cloud" size={22}/></div>
+                                        系统更新日志
+                                    </h3>
+                                    <div className="space-y-6 flex-1 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
+                                        {UPDATE_HISTORY.map((item, index) => (
+                                            <div key={item.version} className={`pb-4 ${index < UPDATE_HISTORY.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
+                                                <div className="flex items-center justify-between text-sm font-bold mb-1">
+                                                    <span className={`text-slate-800 dark:text-white flex items-center gap-2 ${index === 0 ? 'text-lg text-emerald-600 dark:text-emerald-400' : ''}`}>{item.version}</span>
+                                                    <span className="text-xs text-slate-400">{item.date}</span>
+                                                </div>
+                                                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 list-disc list-inside ml-2">
+                                                    {item.changes.map((change, i) => <li key={i}>{change}</li>)}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </TiltCard>
+        
+                                {/* 卡片 4: 数据备份 (跨 2 列) */}
+                                <TiltCard className="glass-panel p-8 rounded-3xl h-full flex flex-col hover-lift lg:col-span-2 xl:col-span-3">
+                                    <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center shadow-inner"><LucideIcon name="Database" size={22}/></div>
+                                        数据安全中心
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition-all group cursor-pointer shadow-sm hover:shadow-md" onClick={handleExport}>
+                                            <div className="flex items-center gap-5 mb-4">
+                                                <div className="w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="Download" size={24}/></div>
+                                                <div>
+                                                    <div className="font-bold text-slate-800 dark:text-white text-lg">导出全站备份</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">生成包含所有学员、课程记录的 JSON 文件</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <span className="text-xs font-bold text-blue-500 bg-blue-50 dark:bg-blue-900 dark:text-blue-300 px-3 py-1.5 rounded-full group-hover:bg-blue-100 dark:group-hover:bg-blue-800 transition-colors">立即下载</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-500 transition-all group relative shadow-sm hover:shadow-md">
+                                            <div className="flex items-center gap-5 mb-4">
+                                                <div className="w-12 h-12 bg-green-500 text-white rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center group-hover:scale-110 transition-transform"><LucideIcon name="UploadCloud" size={24}/></div>
+                                                <div>
+                                                    <div className="font-bold text-slate-800 dark:text-white text-lg">恢复历史数据</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">上传备份文件覆盖当前系统数据</div>
+                                                </div>
+                                            </div>
+                                            <div className="relative">
+                                                <input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" disabled={false} /> 
+                                                <div className="flex justify-end">
+                                                    <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1.5 rounded-full group-hover:bg-green-100 dark:group-hover:bg-green-800 transition-colors flex items-center gap-2">{'点击上传文件'}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                    <div className="mt-8 text-xs text-amber-700/80 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100/50 dark:border-amber-800/30 flex gap-3 items-start">
+                                        <LucideIcon name="AlertCircle" size={18} className="shrink-0 mt-0.5"/>
+                                        <span className="leading-relaxed">安全提示：恢复操作将智能合并数据。建议在执行恢复前，先手动点击“导出备份”以防万一。</span>
+                                    </div>
+                                </TiltCard>
                             </div>
-                            <div className="mt-8 text-xs text-amber-700/80 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100/50 dark:border-amber-800/30 flex gap-3 items-start">
-                                <LucideIcon name="AlertCircle" size={18} className="shrink-0 mt-0.5"/>
-                                <span className="leading-relaxed">安全提示：恢复操作将智能合并数据。建议在执行恢复前，先手动点击“导出备份”以防万一。</span>
-                            </div>
-                        </TiltCard>
-                    </div>
-                </div>
-            )
-        }
-        // 0. 仪表盘 (Dashboard)
-// 0. 仪表盘 (修复统计逻辑：排除补课课程)
-        const Dashboard = () => {
-            const { 
-                students, courses, classGroups, followUps, theme, formatDate, 
-                teacherLevel, classFeeBase, loading, quotes, showTodayIncome,
-                lcUpdate, fetchAll, 
-            } = useAppData();
-            const addToast = useToast(); 
-
-            // ... (中间的状态定义 greeting, quote, editCourse, isModalOpen 保持不变) ...
-            const [greeting, setGreeting] = useState({ text: "早安", icon: "Sun" });
-            const [quote, setQuote] = useState("");
-            const [editCourse, setEditCourse] = useState(null);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-
-            useEffect(() => {
-                const h = new Date().getHours();
-                if (h < 5) setGreeting({ text: "深夜好", icon: "Moon" }); else if (h < 11) setGreeting({ text: "早上好", icon: "Sun" }); else if (h < 14) setGreeting({ text: "中午好", icon: "Sun" }); else if (h < 19) setGreeting({ text: "下午好", icon: "Coffee" }); else setGreeting({ text: "晚上好", icon: "Moon" });
-                const currentQuotes = (quotes && quotes.length > 0) ? quotes : DEFAULT_QUOTES;
-                setQuote(currentQuotes[Math.floor(Math.random() * currentQuotes.length)]);
-            }, [quotes]);
-
-            // ... (handleCourseClick, toggleTask, toggleAttendance, handleSaveCourse 保持不变) ...
-            const handleCourseClick = (c) => { setEditCourse(JSON.parse(JSON.stringify(c))); setIsModalOpen(true); };
-            const toggleTask = (taskId) => { setEditCourse(prev => { const tasks = prev.tasks || {}; return { ...prev, tasks: { ...tasks, [taskId]: !tasks[taskId] } }; }); };
-            const toggleAttendance = (sid, status) => { setEditCourse(prev => { const att = { ...(prev.attendance || {}) }; const current = att[sid] || {}; if (current.status === status) { delete att[sid]; } else { att[sid] = { studentId: sid, status: status, isMadeUp: current.isMadeUp || false }; } return { ...prev, attendance: att }; }); };
-           const handleSaveCourse = async () => { if (!editCourse) return; const originalCourse = courses.find(c => c.id === editCourse.id); if (!originalCourse) return; 
-                       const hours = originalCourse.hoursDeducted || 2; // 新增：获取扣除课时数，默认为 2
-                       const studentUpdates = {}; if (editCourse.type !== 'demo') { const newAtt = editCourse.attendance || {}; const oldAtt = originalCourse.attendance || {}; (editCourse.studentIds || []).forEach(sid => { const newStatus = newAtt[sid]?.status; const oldStatus = oldAtt[sid]?.status; const isMadeUp = oldAtt[sid]?.isMadeUp; if (!isMadeUp) { if (newStatus === 'present' && oldStatus !== 'present') { studentUpdates[sid] = -hours; } else if (newStatus !== 'present' && oldStatus === 'present') { studentUpdates[sid] = hours; } } }); } const { id, ...updateData } = editCourse; const success = await lcUpdate('Course', id, { tasks: updateData.tasks, attendance: updateData.attendance }, true); if (success) { for (const [sid, delta] of Object.entries(studentUpdates)) { const student = students.find(s => s.id === sid); if (student) { const newHours = (student.remainingHours || 0) + delta; await lcUpdate('Student', sid, { remainingHours: newHours }, true); const msg = delta < 0 ? `扣除 ${student.name} ${Math.abs(delta)} 课时` : `返还 ${student.name} ${delta} 课时`; addToast(msg, delta < 0 ? 'success' : 'info'); } } await fetchAll(); setIsModalOpen(false); addToast("课程进度已更新", "success"); } };
-            // ... (薪资计算逻辑保持不变) ...
-            const SALARY = { base: 2000, attendance: 100, transport: 100, phone: 50, housing: 280, performance: 500, lunchPerDay: 20, lunchMax: 440, demoFee: 40 };
-            const FIXED_TOTAL = SALARY.base + SALARY.attendance + SALARY.transport + SALARY.phone + SALARY.housing + SALARY.performance;
-            const isWorkingDay = (d) => { const day = d.getDay(); return day === 0 || (day >= 3 && day <= 6); };
-            const now = new Date();
-            const currentMonthStr = formatDate(now).slice(0, 7);
-            const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const lastMonthStr = formatDate(lastMonthDate).slice(0, 7);
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            let workingDaysCount = 0; for (let i = 1; i <= daysInMonth; i++) if (isWorkingDay(new Date(now.getFullYear(), now.getMonth(), i))) workingDaysCount++;
-            const fixedPerDay = workingDaysCount > 0 ? FIXED_TOTAL / workingDaysCount : 0;
-            const todayStr = formatDate(now);
-            const todayCourses = courses.filter(c => c.dateStr === todayStr).sort((a,b)=>a.startTime.localeCompare(b.startTime));
-            const classFeeRate = 1.5 * (classFeeBase || 0); 
-            const todayRegularIncome = todayCourses.filter(c => c.type !== 'demo').reduce((acc, c) => { let validCount = 0; const hours = c.hoursDeducted || 2; const atts = c.attendance || {}; Object.values(atts).forEach(record => { if ((record.status === 'present' || record.isMadeUp) && c.studentIds?.includes(record.studentId)) { validCount++; } }); return acc + (validCount * classFeeRate * hours / 2); }, 0);
-			const todayDemoIncome = todayCourses.filter(c => c.type === 'demo') .reduce((acc, c) => acc + SALARY.demoFee, 0);
-            const todayTotalClassFee = todayRegularIncome + todayDemoIncome;
-            const isTodayWorking = isWorkingDay(now);
-            const todayLunch = isTodayWorking ? SALARY.lunchPerDay : 0;
-            const todayBase = isTodayWorking ? fixedPerDay : 0;
-            const todayTotalIncome = todayTotalClassFee + todayLunch + todayBase;
-            const monthCourses = courses.filter(c => c.dateStr.startsWith(currentMonthStr));
-            let actualRegularHours = 0; let actualClassFee = 0; let pendingForecastFee = 0; 
-            monthCourses.forEach(c => { 
-                        const hours = c.hoursDeducted || 2; // 获取扣除课时数
-                        const rateHours = hours / 2; // 用于计算课时费的倍率
-                        if (c.tasks?.teachingDone) { 
-                            if (c.type === 'demo') { 
-                                actualClassFee += SALARY.demoFee; 
-                            } else { 
-                                let validStudentCount = 0; 
-                                const atts = c.attendance || {}; 
-                                (c.studentIds || []).forEach(sid => { 
-                                    const record = atts[sid]; 
-                                    if (record && (record.status === 'present' || record.isMadeUp)) { 
-                                        validStudentCount++; 
-                                    } 
-                                }); 
-                                actualRegularHours += (validStudentCount * hours); // 累加实际课时数
-                                actualClassFee += (validStudentCount * classFeeRate * rateHours); // 累加实际课时费
-                            } 
-                        } else { 
-                            if (c.type === 'demo') { 
-                                pendingForecastFee += SALARY.demoFee; 
-                            } else { 
-                                const count = c.studentIds?.length || 0; 
-                                pendingForecastFee += (count * classFeeRate * rateHours); // 累加预期课时费
-                            } 
-                        } 
-                    });
-			const monthRegularHours = actualRegularHours; const monthClassFee = actualClassFee; const rawMonthLunch = workingDaysCount * SALARY.lunchPerDay; const monthLunch = Math.min(rawMonthLunch, SALARY.lunchMax); const monthTotalEstimated = FIXED_TOTAL + monthLunch + (actualClassFee + pendingForecastFee);
-
-            // =================================================================
-            // [核心修改]: getStats 统计逻辑，排除 makeup 类型
-            // =================================================================
-            const getStats = (dateObj) => {
-                const mStr = formatDate(dateObj).slice(0, 7);
-                const followUpTarget = students.length * 2;
-                const followUpDone = followUps.filter(f => f.monthStr === mStr).reduce((acc, f) => acc + (f.count || 0), 0);
-                const followUpRate = followUpTarget > 0 ? (followUpDone / followUpTarget) * 100 : 0;
-                
-                // 修正：筛选常规课时，排除 demo 和 makeup
-                const mCourses = courses.filter(c => c.dateStr.startsWith(mStr) && c.type !== 'demo' && c.type !== 'makeup'); 
-                
-                let expectedAtt = 0, actualAtt = 0;
-                mCourses.forEach(c => {
-                    expectedAtt += (c.studentIds?.length || 0);
-                    if (c.attendance) Object.values(c.attendance).forEach(v => { 
-                        // 实际出勤：到课 或 已补课 (这里的已补课标记来自原课程的 isMadeUp=true)
-                        if (v.status === 'present' || v.isMadeUp) actualAtt++; 
-                    });
-                });
-                const attendanceRate = expectedAtt > 0 ? (actualAtt / expectedAtt) * 100 : 0;
-                return { followUpRate, attendanceRate };
-            };
-            // =================================================================
-
-            const thisMonthStats = getStats(now);
-            const lastMonthStats = getStats(lastMonthDate);
-            const getStudentGrowth = () => { const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1); const currentTotal = students.length; const newStudentsThisMonth = students.filter(s => s.createdAt && new Date(s.createdAt) >= startOfThisMonth).length; return { current: currentTotal, prev: currentTotal - newStudentsThisMonth }; };
-            const studentStats = getStudentGrowth();
-            const Trend = ({ curr, prev, isPercent }) => { const diff = curr - prev; const isUp = diff >= 0; let valStr = ''; if (isPercent) { valStr = `${Math.abs(diff).toFixed(1)}%`; } else { const percentageChange = prev === 0 ? (curr > 0 ? 100 : 0) : ((diff / prev) * 100); valStr = `${Math.abs(percentageChange).toFixed(1)}%`; } const color = isUp ? "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" : "text-rose-500 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400"; const arrow = isUp ? "↑" : "↓"; return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 inline-flex items-center gap-0.5 ${color}`}>{arrow} {valStr}</span>; };
-            const HiddenIncomeCard = () => ( <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-center items-center h-full hover-lift group"> <LucideIcon name="Wallet" size={32} className={`text-${theme.primary}-500 mb-2 opacity-50`}/> <div className="text-xl font-bold text-slate-800 dark:text-white">今日收入已隐藏</div> <div className="text-xs text-slate-400 mt-1">请在“系统设置”中开启显示</div> </TiltCard> );
-            const IncomeCard = () => ( <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden group`}> <div className="relative z-10 flex flex-col h-full justify-between"> <div className="flex justify-between items-start"> <div> <div className="flex items-center gap-2 opacity-90 text-xs font-bold mb-1 uppercase tracking-wider"> <LucideIcon name="Wallet" size={14}/> 今日总收入 </div> <div className="text-4xl font-extrabold tracking-tight"> ¥{todayTotalIncome.toFixed(2)} </div> </div> <div className="text-right opacity-80"> <div className="text-xs font-bold">{todayStr}</div> <div className="text-[10px] mt-0.5">{isTodayWorking ? '工作日' : '休息日'}</div> </div> </div> <div className="mt-8 grid grid-cols-3 gap-2 text-center border-t border-white/20 pt-4"> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">课时费</div> <div className="text-xl font-bold">¥{todayTotalClassFee.toFixed(0)}</div> </div> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">底薪摊</div> <div className="text-xl font-bold">¥{todayBase.toFixed(0)}</div> </div> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">餐补</div> <div className="text-xl font-bold">¥{todayLunch}</div> </div> </div> </div> <div className="absolute -right-6 -bottom-6 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12"><LucideIcon name="Coins" size={160}/></div> </TiltCard> );
-            const QualityCard = () => ( <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group"> <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-slate-700 pb-2"> <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><LucideIcon name="Activity" size={16} className="text-indigo-500"/> 教学质量</div> </div> <div className="space-y-4"> <div> <div className="flex justify-between items-center mb-1"> <span className="text-xs text-slate-500 dark:text-slate-400">回访率</span> <Trend curr={thisMonthStats.followUpRate} prev={lastMonthStats.followUpRate} isPercent={true} /> </div> <div className="flex items-end gap-2"> <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.followUpRate.toFixed(0)}%</span> <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden"> <div className="h-full bg-emerald-500 rounded-full" style={{width: `${thisMonthStats.followUpRate}%`}}></div> </div> </div> </div> <div> <div className="flex justify-between items-center mb-1"> <span className="text-xs text-slate-500 dark:text-slate-400">出勤率</span> <Trend curr={thisMonthStats.attendanceRate} prev={lastMonthStats.attendanceRate} isPercent={true} /> </div> <div className="flex items-end gap-2"> <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.attendanceRate.toFixed(0)}%</span> <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden"> <div className="h-full bg-blue-500 rounded-full" style={{width: `${thisMonthStats.attendanceRate}%`}}></div> </div> </div> </div> </div> </TiltCard> );
-
-            return (
-                <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-7xl mx-auto">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
-                        <div><h1 className="text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">{greeting.text} <LucideIcon name={greeting.icon} className={`text-${theme.accent}-500 animate-float`}/></h1><p className="text-slate-500 dark:text-slate-400 mt-2 font-medium text-lg">{quote}</p></div>
-                        <div className="glass-panel px-5 py-2 rounded-2xl flex items-center gap-4 shadow-sm"><div className="text-right"><div className="text-2xl font-bold text-slate-800 dark:text-white tracking-tighter">{new Date().getDate()}</div><div className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{new Date().toLocaleString('default', { month: 'long' })}</div></div><div className={`h-8 w-1 bg-${theme.primary}-400 rounded-full`}></div><div className="text-sm font-bold text-slate-600 dark:text-slate-300">{isTodayWorking ? '工作日' : '休息日'}</div></div>
-                    </div>
-                    {loading ? (<div className="grid grid-cols-1 md:grid-cols-4 gap-6">{[1,2,3,4].map(i => <Skeleton key={i} className="h-40 rounded-3xl" />)}<Skeleton className="md:col-span-2 h-96 rounded-3xl" /><Skeleton className="h-96 rounded-3xl" /></div>) : (
-                    <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {showTodayIncome ? <div className="col-span-1 md:col-span-2"><IncomeCard /></div> : <div className="col-span-1 md:col-span-2"><HiddenIncomeCard /></div>}
-                        <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group"><div className="flex justify-between items-start mb-4"><div className={`p-3 rounded-2xl bg-${theme.accent}-50 text-${theme.accent}-500`}><LucideIcon name="Users" size={24}/></div><Trend curr={studentStats.current} prev={studentStats.prev} /></div><div><div className="text-3xl font-bold text-slate-800 dark:text-white">{studentStats.current}</div><div className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">在读学员总数</div></div></TiltCard>
-                        <QualityCard />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 glass-panel rounded-3xl p-8 flex flex-col h-[500px]">
-                            <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-xl text-slate-800 dark:text-white flex items-center gap-3"><div className={`w-8 h-8 rounded-lg bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center`}><LucideIcon name="Calendar" size={18}/></div>今日课程</h3><span className="text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-3 py-1 rounded-full">{todayCourses.length} 节</span></div>
-                            <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 -mr-2">{todayCourses.length > 0 ? todayCourses.map(c => (<div key={c.id} onClick={() => handleCourseClick(c)} className={`group flex items-center p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${c.type==='demo' ? 'bg-purple-50/50 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800 hover:border-purple-200 hover:shadow-md' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 hover:shadow-md'}`}><div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-bold mr-5 shrink-0 shadow-sm ${c.type==='demo' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400' : `bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white`}`}><span>{c.startTime.split(':')[0]}</span><span className="text-[10px] opacity-60">:{c.startTime.split(':')[1]}</span></div><div className="flex-1 min-w-0"><div className="font-bold text-slate-800 dark:text-white text-base flex items-center gap-2 truncate">{c.className}{c.type==='demo' && <span className="bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold tracking-wide">DEMO</span>}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-3 font-medium"><span className="flex items-center gap-1"><LucideIcon name="Clock" size={12}/> {c.startTime}-{c.endTime}</span>{c.type !== 'demo' && (<span className="flex items-center gap-1"><LucideIcon name="Users" size={12}/><span className="flex items-center text-[10px] sm:text-xs"><span className="text-slate-500">应到{c.studentIds?.length||0}</span><span className="mx-1 text-slate-300">/</span><span className={Object.values(c.attendance || {}).filter(a => a.status === 'present' || a.isMadeUp).length < (c.studentIds?.length||0)? "text-rose-500 font-bold": "text-emerald-600 font-bold"}>实到{Object.values(c.attendance || {}).filter(a => a.status === 'present' || a.isMadeUp).length}</span></span></span>)}{c.type === 'demo' && <span className="text-purple-500 dark:text-purple-400">试听课</span>}</div></div><div className="text-right pl-4 border-l border-slate-100 dark:border-slate-700 ml-4"><div className={`text-sm font-extrabold ${c.type==='demo'?'text-purple-600 dark:text-purple-400':`text-${theme.primary}-600 dark:text-blue-400`}`}>+¥{c.type === 'demo' ? SALARY.demoFee : (Object.values(c.attendance || {}).filter(a => a.status === 'present').length * classFeeRate).toFixed(1)}</div><div className={`mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold inline-block ${c.tasks?.teachingDone ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}`}>{c.tasks?.teachingDone ? '已结课' : '待上课'}</div></div></div>)) : (<div className="h-full flex flex-col items-center justify-center text-slate-400"><div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4"><LucideIcon name="Coffee" size={32} className="opacity-50"/></div><span className="font-medium">今天没有课程安排，好好休息一下吧~</span></div>)}</div>
                         </div>
-                        <div className="flex flex-col gap-6 h-full">
-                            <div className="glass-panel rounded-3xl p-8 flex-1 flex flex-col"><h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6 flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"><LucideIcon name="PieChart" size={18}/></div>本月绩效</h3><div className="space-y-5 flex-1"><div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group"><div className="flex justify-between items-center"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">累计常规课时</div><div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{monthRegularHours} <span className="text-sm font-normal text-slate-400">课时</span></div></div><div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-500 flex items-center justify-center"><LucideIcon name="Clock" size={24}/></div></div></div><div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group"><div className="flex justify-between items-center"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">累计课时费</div><div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-orange-500 transition-colors">¥{monthClassFee.toFixed(0)}</div></div><div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-2xl text-orange-500 flex items-center justify-center"><LucideIcon name="Coins" size={24}/></div></div></div><div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-inner"><div className="flex justify-between items-center mb-2"><div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">本月薪资预测 (税前)</div><div className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">¥{monthTotalEstimated.toFixed(0)}</div><div className="text-xs bg-white dark:bg-slate-700 px-2 py-0.5 rounded border dark:border-slate-600 text-slate-400 font-mono">{workingDaysCount}工作日</div></div><div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-hidden"><div className="h-full bg-slate-400" style={{width: '60%'}}></div></div></div></div><div className="mt-6 pt-4 border-t border-slate-200/50 dark:border-slate-700 text-[10px] text-slate-400 flex justify-between items-center"><span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">Rate: ¥{classFeeBase}/h</span><span>含常规 + Demo</span></div></div>
-                            <TiltCard className="glass-panel rounded-3xl p-6 flex items-center justify-between hover-lift cursor-default"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">当前职级</div><div className="text-lg font-bold text-slate-800 dark:text-white">{teacherLevel}</div></div><div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30"><LucideIcon name="Award" size={24}/></div></TiltCard>
-                        </div>
-                    </div>
-                    </>)}
-                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="课程快捷操作"> {editCourse && ( <div className="space-y-6"> <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-gray-100 dark:border-slate-600"> <div> <div className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2"> {editCourse.className} {editCourse.type === 'demo' && <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded-full">DEMO</span>} </div> <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2"> <LucideIcon name="Clock" size={14}/> {editCourse.startTime} - {editCourse.endTime} </div> </div> <div className="text-right"> <div className="text-xs text-slate-400 uppercase font-bold mb-1">预计课酬</div> <div className={`text-xl font-bold ${editCourse.type==='demo'?'text-purple-600':'text-blue-600'}`}> ¥{editCourse.type === 'demo' ? 40 : (Object.values(editCourse.attendance || {}).filter(a => a.status === 'present').length * (classFeeBase * 1.5)).toFixed(1)} </div> </div> </div> <div> <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2"> <LucideIcon name="ClipboardList" size={16}/> 教学任务 </h4> <div className="grid grid-cols-2 gap-3"> {DEFAULT_TASKS.map(task => ( <div key={task.id} onClick={() => toggleTask(task.id)} className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${ editCourse.tasks?.[task.id] ? `bg-${theme.primary}-50 border-${theme.primary}-200 dark:bg-${theme.primary}-900/30 dark:border-${theme.primary}-700` : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-gray-300' }`} > <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${ editCourse.tasks?.[task.id] ? `bg-${theme.primary}-500 border-${theme.primary}-500 text-white` : 'border-gray-300 bg-white' }`}> {editCourse.tasks?.[task.id] && <LucideIcon name="CheckSquare" size={12}/>} </div> <span className={`text-sm font-medium ${editCourse.tasks?.[task.id] ? `text-${theme.primary}-700 dark:text-white` : 'text-slate-600 dark:text-slate-400'}`}>{task.name}</span> </div> ))} </div> </div> {editCourse.type !== 'demo' && ( <div> <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2"> <LucideIcon name="UserCheck" size={16}/> 学员考勤 <span className="text-xs font-normal text-slate-400">(点击标记)</span> </h4> <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1"> {editCourse.studentIds?.map(sid => { const st = students.find(s => s.id === sid); if (!st) return null; const status = editCourse.attendance?.[sid]?.status; const isMadeUp = editCourse.attendance?.[sid]?.isMadeUp; return ( <div key={sid} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl"> <div className="flex items-center gap-3"> <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status==='present' ? 'bg-emerald-100 text-emerald-600' : status==='absent' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}> {st.name[0]} </div> <div> <div className="text-sm font-bold text-slate-700 dark:text-white"> {st.name} {isMadeUp && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">补课</span>} </div> <div className="text-[10px] text-slate-400">剩余: {st.remainingHours} 课时</div> </div> </div> <div className="flex bg-gray-100 dark:bg-slate-700 p-1 rounded-lg"> <button onClick={() => toggleAttendance(sid, 'present')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${status === 'present' ? 'bg-white shadow text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`} > 到课 </button> <button onClick={() => toggleAttendance(sid, 'absent')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${status === 'absent' ? 'bg-white shadow text-red-500' : 'text-gray-400 hover:text-gray-600'}`} > 缺勤 </button> </div> </div> ); })} </div> </div> )} <div className="pt-4 border-t border-gray-100 dark:border-slate-700 flex gap-3"> <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"> 取消 </button> <button onClick={handleSaveCourse} className={`flex-1 py-3 rounded-xl bg-${theme.primary}-600 text-white text-sm font-bold shadow-lg shadow-${theme.primary}-200 dark:shadow-none hover:bg-${theme.primary}-700 transition-all active:scale-95`}> 确认保存 </button> </div> </div> )} </Modal>
-                </div>
-            )
-        }
+                    )
+                }
+        
+        
+       // 0. 仪表盘 (修复统计逻辑：排除补课课程)
+               const Dashboard = () => {
+                   const { 
+                       students, courses, classGroups, followUps, theme, formatDate, 
+                       teacherLevel, classFeeBase, loading, quotes, showTodayIncome,
+                       lcUpdate, fetchAll, 
+                   } = useAppData();
+                   const addToast = useToast(); 
+       
+                   // ... (中间的状态定义 greeting, quote, editCourse, isModalOpen 保持不变) ...
+                   const [greeting, setGreeting] = useState({ text: "早安", icon: "Sun" });
+                   const [quote, setQuote] = useState("");
+                   const [editCourse, setEditCourse] = useState(null);
+                   const [isModalOpen, setIsModalOpen] = useState(false);
+       
+                   useEffect(() => {
+                       const h = new Date().getHours();
+                       if (h < 5) setGreeting({ text: "深夜好", icon: "Moon" }); else if (h < 11) setGreeting({ text: "早上好", icon: "Sun" }); else if (h < 14) setGreeting({ text: "中午好", icon: "Sun" }); else if (h < 19) setGreeting({ text: "下午好", icon: "Coffee" }); else setGreeting({ text: "晚上好", icon: "Moon" });
+                       const currentQuotes = (quotes && quotes.length > 0) ? quotes : DEFAULT_QUOTES;
+                       setQuote(currentQuotes[Math.floor(Math.random() * currentQuotes.length)]);
+                   }, [quotes]);
+       
+                   // ... (handleCourseClick, toggleTask, toggleAttendance, handleSaveCourse 保持不变) ...
+                   const handleCourseClick = (c) => { setEditCourse(JSON.parse(JSON.stringify(c))); setIsModalOpen(true); };
+                   const toggleTask = (taskId) => { setEditCourse(prev => { const tasks = prev.tasks || {}; return { ...prev, tasks: { ...tasks, [taskId]: !tasks[taskId] } }; }); };
+                   const toggleAttendance = (sid, status) => { setEditCourse(prev => { const att = { ...(prev.attendance || {}) }; const current = att[sid] || {}; if (current.status === status) { delete att[sid]; } else { att[sid] = { studentId: sid, status: status, isMadeUp: current.isMadeUp || false }; } return { ...prev, attendance: att }; }); };
+                  const handleSaveCourse = async () => { if (!editCourse) return; const originalCourse = courses.find(c => c.id === editCourse.id); if (!originalCourse) return; 
+                              const hours = originalCourse.hoursDeducted || 2; // 新增：获取扣除课时数，默认为 2
+                              const studentUpdates = {}; if (editCourse.type !== 'demo') { const newAtt = editCourse.attendance || {}; const oldAtt = originalCourse.attendance || {}; (editCourse.studentIds || []).forEach(sid => { const newStatus = newAtt[sid]?.status; const oldStatus = oldAtt[sid]?.status; const isMadeUp = oldAtt[sid]?.isMadeUp; if (!isMadeUp) { if (newStatus === 'present' && oldStatus !== 'present') { studentUpdates[sid] = -hours; } else if (newStatus !== 'present' && oldStatus === 'present') { studentUpdates[sid] = hours; } } }); } const { id, ...updateData } = editCourse; const success = await lcUpdate('Course', id, { tasks: updateData.tasks, attendance: updateData.attendance }, true); if (success) { for (const [sid, delta] of Object.entries(studentUpdates)) { const student = students.find(s => s.id === sid); if (student) { const newHours = (student.remainingHours || 0) + delta; await lcUpdate('Student', sid, { remainingHours: newHours }, true); const msg = delta < 0 ? `扣除 ${student.name} ${Math.abs(delta)} 课时` : `返还 ${student.name} ${delta} 课时`; addToast(msg, delta < 0 ? 'success' : 'info'); } } await fetchAll(); setIsModalOpen(false); addToast("课程进度已更新", "success"); } };
+                   // ==============================================================================================
+                   // 修正薪资计算逻辑
+                   // ==============================================================================================
+                   const LEVEL_SALARY = LEVEL_SALARY_MAP[teacherLevel] || LEVEL_SALARY_MAP['默认'];
+                   const SALARY = { 
+                       base: 1000, 
+                       level: LEVEL_SALARY, 
+                       performance: 500, // 绩效
+                       transport: 100, 
+                       phone: 50, 
+                       housing: 280, 
+                       lunchPerDay: 20, // 餐补每天 20
+                       lunchMax: 440, 
+                       demoFee: 40,
+                   };
+                   
+                   // 固定总额: 基本 (1000) + 职级 + 绩效 (500) + 交通 (100) + 花费 (50) + 住房 (280)
+                   const FIXED_TOTAL = SALARY.base + SALARY.level + SALARY.performance + SALARY.transport + SALARY.phone + SALARY.housing;
+                   
+                   // 工作日判断逻辑：周三(3)到周天(0)
+                   const isWorkingDay = (d) => { 
+                       const day = d.getDay(); // 0=周日, 1=周一, ..., 6=周六
+                       // 周三(3), 周四(4), 周五(5), 周六(6), 周日(0)
+                       return day === 0 || (day >= 3 && day <= 6); 
+                   };
+                   
+                   const now = new Date();
+                   const currentMonthStr = formatDate(now).slice(0, 7);
+                   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                   const lastMonthStr = formatDate(lastMonthDate).slice(0, 7);
+                   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                   
+                   // 计算本月工作日数
+                   let workingDaysCount = 0; 
+                   for (let i = 1; i <= daysInMonth; i++) {
+                       if (isWorkingDay(new Date(now.getFullYear(), now.getMonth(), i))) {
+                           workingDaysCount++;
+                       }
+                   }
+                   
+                   // 计算每日固定薪资摊派额（用于当日收入显示）
+                   const fixedPerDay = workingDaysCount > 0 ? FIXED_TOTAL / workingDaysCount : 0;
+                   
+                   // 今日收入计算
+                   const todayStr = formatDate(now);
+                   const todayCourses = courses.filter(c => c.dateStr === todayStr).sort((a,b)=>a.startTime.localeCompare(b.startTime));
+                   const classFeeRate = 1.5 * (classFeeBase || 0); 
+                   
+                   // 今日常规课收入
+                   const todayRegularIncome = todayCourses.filter(c => c.type !== 'demo').reduce((acc, c) => { 
+                       let validCount = 0; 
+                       const hours = c.hoursDeducted || 2; 
+                       const atts = c.attendance || {}; 
+                       Object.values(atts).forEach(record => { 
+                           // 仅计算已出勤且未被标记为已补课的 (即现场扣费的)
+                           if (record.status === 'present' && c.studentIds?.includes(record.studentId) && !record.isMadeUp) { 
+                               validCount++; 
+                           } 
+                       }); 
+                       return acc + (validCount * classFeeRate * hours / 2); // 课时费按 1.5 倍基数计算
+                   }, 0);
+                   
+       			const todayDemoIncome = todayCourses.filter(c => c.type === 'demo') .reduce((acc, c) => acc + SALARY.demoFee, 0);
+                   const todayTotalClassFee = todayRegularIncome + todayDemoIncome;
+                   
+                   const isTodayWorking = isWorkingDay(now);
+                   const todayLunch = isTodayWorking ? SALARY.lunchPerDay : 0;
+                   
+                   // 今日底薪摊派部分
+                   const todayBase = isTodayWorking ? fixedPerDay : 0;
+       
+                   // 修正今日总收入 = 课时费 + 餐补 + 底薪摊
+                   const todayTotalIncome = todayTotalClassFee + todayLunch + todayBase; 
+                   
+                   // 月度预测计算
+                   const monthCourses = courses.filter(c => c.dateStr.startsWith(currentMonthStr));
+                   let actualRegularHours = 0; let actualClassFee = 0; let pendingForecastFee = 0; 
+                   
+                   monthCourses.forEach(c => { 
+                       const hours = c.hoursDeducted || 2; 
+                       const rateHours = hours / 2; // 用于计算课时费的倍率
+                       if (c.tasks?.teachingDone) { 
+                           if (c.type === 'demo') { 
+                               actualClassFee += SALARY.demoFee; 
+                           } else { 
+                               let validStudentCount = 0; 
+                               const atts = c.attendance || {}; 
+                               (c.studentIds || []).forEach(sid => { 
+                                   const record = atts[sid]; 
+                                   // 仅计算已到课或已补课的学生 (已结算)
+                                   if (record && (record.status === 'present' || record.isMadeUp)) { 
+                                       validStudentCount++; 
+                                   } 
+                               }); 
+                               actualRegularHours += (validStudentCount * hours); 
+                               actualClassFee += (validStudentCount * classFeeRate * rateHours); 
+                           } 
+                       } else { 
+                           // 未结课的课程，用于计算预估课时费（此处不计入 final prediction）
+                           if (c.type === 'demo') { 
+                               pendingForecastFee += SALARY.demoFee; 
+                           } else { 
+                               const count = c.studentIds?.length || 0; 
+                               pendingForecastFee += (count * classFeeRate * rateHours); 
+                           } 
+                       } 
+                   });
+                   
+       			const monthRegularHours = actualRegularHours; 
+                   const monthClassFee = actualClassFee; 
+                   
+                   // 【修正】月餐补：取消 Math.min 限制
+                   const rawMonthLunch = workingDaysCount * SALARY.lunchPerDay; 
+                   const monthLunch = rawMonthLunch; 
+                   
+                   // 月薪资预测: 固定总额 + 月餐补 + 已结算课时费
+                   const monthTotalEstimated = FIXED_TOTAL + monthLunch + actualClassFee;
+       
+                   // =================================================================
+                   // [核心修改]: getStats 统计逻辑，排除 makeup 类型
+                   // =================================================================
+                   const getStats = (dateObj) => {
+                       const mStr = formatDate(dateObj).slice(0, 7);
+                       const followUpTarget = students.length * 2;
+                       const followUpDone = followUps.filter(f => f.monthStr === mStr).reduce((acc, f) => acc + (f.count || 0), 0);
+                       const followUpRate = followUpTarget > 0 ? (followUpDone / followUpTarget) * 100 : 0;
+                       
+                       // 修正：筛选常规课时，排除 demo 和 makeup
+                       const mCourses = courses.filter(c => c.dateStr.startsWith(mStr) && c.type !== 'demo' && c.type !== 'makeup'); 
+                       
+                       let expectedAtt = 0, actualAtt = 0;
+                       mCourses.forEach(c => {
+                           expectedAtt += (c.studentIds?.length || 0);
+                           if (c.attendance) Object.values(c.attendance).forEach(v => { 
+                               // 实际出勤：到课 或 已补课 (这里的已补课标记来自原课程的 isMadeUp=true)
+                               if (v.status === 'present' || v.isMadeUp) actualAtt++; 
+                           });
+                       });
+                       const attendanceRate = expectedAtt > 0 ? (actualAtt / expectedAtt) * 100 : 0;
+                       return { followUpRate, attendanceRate };
+                   };
+                   // =================================================================
+       
+                   const thisMonthStats = getStats(now);
+                   const lastMonthStats = getStats(lastMonthDate);
+                   const getStudentGrowth = () => { const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1); const currentTotal = students.length; const newStudentsThisMonth = students.filter(s => s.createdAt && new Date(s.createdAt) >= startOfThisMonth).length; return { current: currentTotal, prev: currentTotal - newStudentsThisMonth }; };
+                   const studentStats = getStudentGrowth();
+                   const Trend = ({ curr, prev, isPercent }) => { const diff = curr - prev; const isUp = diff >= 0; let valStr = ''; if (isPercent) { valStr = `${Math.abs(diff).toFixed(1)}%`; } else { const percentageChange = prev === 0 ? (curr > 0 ? 100 : 0) : ((diff / prev) * 100); valStr = `${Math.abs(percentageChange).toFixed(1)}%`; } const color = isUp ? "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" : "text-rose-500 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400"; const arrow = isUp ? "↑" : "↓"; return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 inline-flex items-center gap-0.5 ${color}`}>{arrow} {valStr}</span>; };
+                   const HiddenIncomeCard = () => ( <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-center items-center h-full hover-lift group"> <LucideIcon name="Wallet" size={32} className={`text-${theme.primary}-500 mb-2 opacity-50`}/> <div className="text-xl font-bold text-slate-800 dark:text-white">今日收入已隐藏</div> <div className="text-xs text-slate-400 mt-1">请在“系统设置”中开启显示</div> </TiltCard> );
+                   const IncomeCard = () => ( <TiltCard className={`col-span-1 md:col-span-2 bg-gradient-to-br from-${theme.primary}-500 to-${theme.primary}-700 rounded-3xl p-6 text-white shadow-xl shadow-${theme.primary}-500/30 relative overflow-hidden group`}> <div className="relative z-10 flex flex-col h-full justify-between"> <div className="flex justify-between items-start"> <div> <div className="flex items-center gap-2 opacity-90 text-xs font-bold mb-1 uppercase tracking-wider"> <LucideIcon name="Wallet" size={14}/> 今日总收入 </div> <div className="text-4xl font-extrabold tracking-tight"> ¥{todayTotalIncome.toFixed(2)} </div> </div> <div className="text-right opacity-80"> <div className="text-xs font-bold">{todayStr}</div> <div className="text-[10px] mt-0.5">{isTodayWorking ? '工作日' : '休息日'}</div> </div> </div> <div className="mt-8 grid grid-cols-3 gap-2 text-center border-t border-white/20 pt-4"> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">课时费</div> <div className="text-xl font-bold">¥{todayTotalClassFee.toFixed(0)}</div> </div> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">底薪摊</div> <div className="text-xl font-bold">¥{todayBase.toFixed(0)}</div> </div> <div> <div className="text-xs opacity-70 uppercase tracking-wider mb-1">餐补</div> <div className="text-xl font-bold">¥{todayLunch}</div> </div> </div> </div> <div className="absolute -right-6 -bottom-6 opacity-10 transform group-hover:scale-110 transition-transform duration-700 rotate-12"><LucideIcon name="Coins" size={160}/></div> </TiltCard> );
+                   const QualityCard = () => ( <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group"> <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-slate-700 pb-2"> <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><LucideIcon name="Activity" size={16} className="text-indigo-500"/> 教学质量</div> </div> <div className="space-y-4"> <div> <div className="flex justify-between items-center mb-1"> <span className="text-xs text-slate-500 dark:text-slate-400">回访率</span> <Trend curr={thisMonthStats.followUpRate} prev={lastMonthStats.followUpRate} isPercent={true} /> </div> <div className="flex items-end gap-2"> <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.followUpRate.toFixed(0)}%</span> <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden"> <div className="h-full bg-emerald-500 rounded-full" style={{width: `${thisMonthStats.followUpRate}%`}}></div> </div> </div> </div> <div> <div className="flex justify-between items-center mb-1"> <span className="text-xs text-slate-500 dark:text-slate-400">出勤率</span> <Trend curr={thisMonthStats.attendanceRate} prev={lastMonthStats.attendanceRate} isPercent={true} /> </div> <div className="flex items-end gap-2"> <span className="text-lg font-bold text-slate-800 dark:text-white">{thisMonthStats.attendanceRate.toFixed(0)}%</span> <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full mb-1.5 overflow-hidden"> <div className="h-full bg-blue-500 rounded-full" style={{width: `${thisMonthStats.attendanceRate}%`}}></div> </div> </div> </div> </div> </TiltCard> );
+       
+                   return (
+                       <div className="p-6 md:p-10 space-y-8 pb-24 md:pb-10 pt-20 md:pt-10 animate-enter max-w-7xl mx-auto">
+                           {/* Header */}
+                           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+                               <div><h1 className="text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight flex items-center gap-3">{greeting.text} <LucideIcon name={greeting.icon} className={`text-${theme.accent}-500 animate-float`}/></h1><p className="text-slate-500 dark:text-slate-400 mt-2 font-medium text-lg">{quote}</p></div>
+                               <div className="glass-panel px-5 py-2 rounded-2xl flex items-center gap-4 shadow-sm"><div className="text-right"><div className="text-2xl font-bold text-slate-800 dark:text-white tracking-tighter">{new Date().getDate()}</div><div className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{new Date().toLocaleString('default', { month: 'long' })}</div></div><div className={`h-8 w-1 bg-${theme.primary}-400 rounded-full`}></div><div className="text-sm font-bold text-slate-600 dark:text-slate-300">{isTodayWorking ? '工作日' : '休息日'}</div></div>
+                           </div>
+                           {loading ? (<div className="grid grid-cols-1 md:grid-cols-4 gap-6">{[1,2,3,4].map(i => <Skeleton key={i} className="h-40 rounded-3xl" />)}<Skeleton className="md:col-span-2 h-96 rounded-3xl" /><Skeleton className="h-96 rounded-3xl" /></div>) : (
+                           <>
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                               {showTodayIncome ? <div className="col-span-1 md:col-span-2"><IncomeCard /></div> : <div className="col-span-1 md:col-span-2"><HiddenIncomeCard /></div>}
+                               <TiltCard className="glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden hover-lift group"><div className="flex justify-between items-start mb-4"><div className={`p-3 rounded-2xl bg-${theme.accent}-50 text-${theme.accent}-500`}><LucideIcon name="Users" size={24}/></div><Trend curr={studentStats.current} prev={studentStats.prev} /></div><div><div className="text-3xl font-bold text-slate-800 dark:text-white">{studentStats.current}</div><div className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">在读学员总数</div></div></TiltCard>
+                               <QualityCard />
+                           </div>
+                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                               <div className="lg:col-span-2 glass-panel rounded-3xl p-8 flex flex-col h-[500px]">
+                                   <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-xl text-slate-800 dark:text-white flex items-center gap-3"><div className={`w-8 h-8 rounded-lg bg-${theme.primary}-100 text-${theme.primary}-600 dark:bg-slate-700 dark:text-white flex items-center justify-center`}><LucideIcon name="Calendar" size={18}/></div>今日课程</h3><span className="text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-3 py-1 rounded-full">{todayCourses.length} 节</span></div>
+                                   <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 -mr-2">{todayCourses.length > 0 ? todayCourses.map(c => (<div key={c.id} onClick={() => handleCourseClick(c)} className={`group flex items-center p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${c.type==='demo' ? 'bg-purple-50/50 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800 hover:border-purple-200 hover:shadow-md' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 hover:shadow-md'}`}><div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center text-sm font-bold mr-5 shrink-0 shadow-sm ${c.type==='demo' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400' : `bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white`}`}><span>{c.startTime.split(':')[0]}</span><span className="text-[10px] opacity-60">:{c.startTime.split(':')[1]}</span></div><div className="flex-1 min-w-0"><div className="font-bold text-slate-800 dark:text-white text-base flex items-center gap-2 truncate">{c.className}{c.type==='demo' && <span className="bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold tracking-wide">DEMO</span>}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-3 font-medium"><span className="flex items-center gap-1"><LucideIcon name="Clock" size={12}/> {c.startTime}-{c.endTime}</span>{c.type !== 'demo' && (<span className="flex items-center gap-1"><LucideIcon name="Users" size={12}/><span className="flex items-center text-[10px] sm:text-xs"><span className="text-slate-500">应到{c.studentIds?.length||0}</span><span className="mx-1 text-slate-300">/</span><span className={Object.values(c.attendance || {}).filter(a => a.status === 'present' || a.isMadeUp).length < (c.studentIds?.length||0)? "text-rose-500 font-bold": "text-emerald-600 font-bold"}>实到{Object.values(c.attendance || {}).filter(a => a.status === 'present' || a.isMadeUp).length}</span></span></span>)}{c.type === 'demo' && <span className="text-purple-500 dark:text-purple-400">试听课</span>}</div></div><div className="text-right pl-4 border-l border-slate-100 dark:border-slate-700 ml-4"><div className={`text-sm font-extrabold ${c.type==='demo'?'text-purple-600 dark:text-purple-400':`text-${theme.primary}-600 dark:text-blue-400`}`}>+¥{c.type === 'demo' ? SALARY.demoFee : (Object.values(c.attendance || {}).filter(a => a.status === 'present').length * classFeeRate).toFixed(1)}</div><div className={`mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold inline-block ${c.tasks?.teachingDone ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}`}>{c.tasks?.teachingDone ? '已结课' : '待上课'}</div></div></div>)) : (<div className="h-full flex flex-col items-center justify-center text-slate-400"><div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4"><LucideIcon name="Coffee" size={32} className="opacity-50"/></div><span className="font-medium">今天没有课程安排，好好休息一下吧~</span></div>)}</div>
+                               </div>
+                               <div className="flex flex-col gap-6 h-full">
+                                   <div className="glass-panel rounded-3xl p-8 flex-1 flex flex-col"><h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6 flex items-center gap-3"><div className={`w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center`}><LucideIcon name="PieChart" size={18}/></div>本月绩效</h3><div className="space-y-5 flex-1"><div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group"><div className="flex justify-between items-center"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">累计常规课时</div><div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{monthRegularHours.toFixed(1)} <span className="text-sm font-normal text-slate-400">课时</span></div></div><div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-500 flex items-center justify-center"><LucideIcon name="Clock" size={24}/></div></div></div><div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group"><div className="flex justify-between items-center"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">已结算课时费</div><div className="text-3xl font-bold text-slate-800 dark:text-white group-hover:text-orange-500 transition-colors">¥{monthClassFee.toFixed(0)}</div></div><div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-2xl text-orange-500 flex items-center justify-center"><LucideIcon name="Coins" size={24}/></div></div></div><div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-inner"><div className="flex justify-between items-center mb-2"><div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">本月薪资预测 (税前)</div><div className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">¥{monthTotalEstimated.toFixed(0)}</div><div className="text-xs bg-white dark:bg-slate-700 px-2 py-0.5 rounded border dark:border-slate-600 text-slate-400 font-mono">{workingDaysCount}工作日</div></div>
+                                   
+                                   {/* 分解显示：明确包含绩效 */}
+                                   <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                                       组成: 固定总额(¥{FIXED_TOTAL}) + 餐补(¥{monthLunch}) + 课时费(¥{monthClassFee.toFixed(0)})
+                                   </div>
+       
+                                   <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-3 overflow-hidden"><div className="h-full bg-slate-400" style={{width: '60%'}}></div></div></div></div><div className="mt-6 pt-4 border-t border-slate-200/50 dark:border-slate-700 text-[10px] text-slate-400 flex justify-between items-center"><span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">Rate: ¥{classFeeBase}/h</span><span>含常规 + Demo</span></div></div>
+                                   <TiltCard className="glass-panel rounded-3xl p-6 flex items-center justify-between hover-lift cursor-default"><div><div className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">当前职级</div><div className="text-lg font-bold text-slate-800 dark:text-white">{teacherLevel}</div><div className="text-xs text-slate-400 mt-1">岗位工资: ¥{SALARY.level}</div></div><div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30"><LucideIcon name="Award" size={24}/></div></TiltCard>
+                               </div>
+                           </div>
+                           </>)}
+                           <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="课程快捷操作"> {editCourse && ( <div className="space-y-6"> <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-gray-100 dark:border-slate-600"> <div> <div className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2"> {editCourse.className} {editCourse.type === 'demo' && <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded-full">DEMO</span>} </div> <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2"> <LucideIcon name="Clock" size={14}/> {editCourse.startTime} - {editCourse.endTime} </div> </div> <div className="text-right"> <div className="text-xs text-slate-400 uppercase font-bold mb-1">预计课酬</div> <div className={`text-xl font-bold ${editCourse.type==='demo'?'text-purple-600':'text-blue-600'}`}> ¥{editCourse.type === 'demo' ? 40 : (Object.values(editCourse.attendance || {}).filter(a => a.status === 'present').length * (classFeeBase * 1.5)).toFixed(1)} </div> </div> </div> <div> <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2"> <LucideIcon name="ClipboardList" size={16}/> 教学任务 </h4> <div className="grid grid-cols-2 gap-3"> {DEFAULT_TASKS.map(task => ( <div key={task.id} onClick={() => toggleTask(task.id)} className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${ editCourse.tasks?.[task.id] ? `bg-${theme.primary}-50 border-${theme.primary}-200 dark:bg-${theme.primary}-900/30 dark:border-${theme.primary}-700` : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-gray-300' }`} > <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${ editCourse.tasks?.[task.id] ? `bg-${theme.primary}-500 border-${theme.primary}-500 text-white` : 'border-gray-300 bg-white' }`}> {editCourse.tasks?.[task.id] && <LucideIcon name="CheckSquare" size={12}/>} </div> <span className={`text-sm font-medium ${editCourse.tasks?.[task.id] ? `text-${theme.primary}-700 dark:text-white` : 'text-slate-600 dark:text-slate-400'}`}>{task.name}</span> </div> ))} </div> </div> {editCourse.type !== 'demo' && ( <div> <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2"> <LucideIcon name="UserCheck" size={16}/> 学员考勤 <span className="text-xs font-normal text-slate-400">(点击标记)</span> </h4> <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1"> {editCourse.studentIds?.map(sid => { const st = students.find(s => s.id === sid); if (!st) return null; const status = editCourse.attendance?.[sid]?.status; const isMadeUp = editCourse.attendance?.[sid]?.isMadeUp; return ( <div key={sid} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl"> <div className="flex items-center gap-3"> <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status==='present' ? 'bg-emerald-100 text-emerald-600' : status==='absent' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}> {st.name[0]} </div> <div> <div className="text-sm font-bold text-slate-700 dark:text-white"> {st.name} {isMadeUp && <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">补课</span>} </div> <div className="text-[10px] text-slate-400">剩余: {st.remainingHours} 课时</div> </div> </div> <div className="flex bg-gray-100 dark:bg-slate-700 p-1 rounded-lg"> <button onClick={() => toggleAttendance(sid, 'present')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${status === 'present' ? 'bg-white shadow text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`} > 到课 </button> <button onClick={() => toggleAttendance(sid, 'absent')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${status === 'absent' ? 'bg-white shadow text-red-500' : 'text-gray-400 hover:text-gray-600'}`} > 缺勤 </button> </div> </div> ); })} </div> </div> )} <div className="pt-4 border-t border-gray-100 dark:border-slate-700 flex gap-3"> <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"> 取消 </button> <button onClick={handleSaveCourse} className={`flex-1 py-3 rounded-xl bg-${theme.primary}-600 text-white text-sm font-bold shadow-lg shadow-${theme.primary}-200 dark:shadow-none hover:bg-${theme.primary}-700 transition-all active:scale-95`}> 确认保存 </button> </div> </div> )} </Modal>
+                       </div>
+                   )
+               }
+                
+        
+        
+        
+        
         // 1. 学员管理
         const StudentManager = () => {
             const { students, theme, lcAdd, lcUpdate, lcDelete, loading, setActiveStudentId, getPredictionText } = useAppData();
@@ -2450,121 +2562,123 @@
                }
         // --- 主程序入口 ---
 // --- 主程序入口 (修复版：已找回数据加载逻辑) ---
-        function SchoolSystem() {
-            const addToast = useToast(); 
-            const [activeTab, setActiveTab] = useState('dashboard'); 
-            const [activeStudentId, setActiveStudentId] = useState(null); 
-            
-            // 补课目标数据
-            const [makeupTarget, setMakeupTarget] = useState(null); 
-
-            // 状态定义
-            const [theme, setTheme] = useState(() => { const lsThemeId = localStorage.getItem('lms_theme_id'); const defaultTheme = THEMES[0]; return lsThemeId ? (THEMES.find(t => t.id === lsThemeId) || defaultTheme) : defaultTheme; });
-            const [rippleEffect, setRippleEffect] = useState(null);
-            const [teacherLevel, setTeacherLevel] = useState(localStorage.getItem('lms_teacher_level') || '初级 2 级');
-            const [classFeeBase, setClassFeeBase] = useState(Number(localStorage.getItem('lms_class_fee_base')) || 8);
-            const [showTodayIncome, setShowTodayIncome] = useState(() => { const saved = localStorage.getItem('lms_show_today_income'); return saved !== null ? JSON.parse(saved) : true; });
-            const [quotes, setQuotes] = useState(() => { try { const saved = JSON.parse(localStorage.getItem('lms_quotes')); return (saved && saved.length > 0) ? saved : DEFAULT_QUOTES; } catch(e) { return DEFAULT_QUOTES; } });
-            const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
-            const [attendanceMode, setAttendanceMode] = useState(localStorage.getItem('lms_attendance_mode') || 'scheduled');
-            const [loading, setLoading] = useState(false);
-            
-            // 核心数据状态
-            const [students, setStudents] = useState([]);
-            const [courses, setCourses] = useState([]);
-            const [followUps, setFollowUps] = useState([]);
-            const [classGroups, setClassGroups] = useState([]);
-            const [recurringSchedules, setRecurringSchedules] = useState([]);
-            
-            const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
-            const [viewMode, setViewMode] = useState('week'); 
-
-            // 辅助函数
-            const calendarDays = useMemo(() => { const days = []; let start = new Date(currentWeekStart); if (viewMode === 'day') { days.push(new Date(start)); } else if (viewMode === 'week') { const day = start.getDay(); const diff = start.getDate() - day + (day === 0 ? -6 : 1); start.setDate(diff); for(let i=0; i<7; i++){ days.push(new Date(start)); start.setDate(start.getDate()+1); } } else if (viewMode === 'month') { start.setDate(1); const dayOfWeek = start.getDay(); const offset = (dayOfWeek + 6) % 7; start.setDate(start.getDate() - offset); for(let i=0; i<42; i++) { days.push(new Date(start)); start.setDate(start.getDate()+1); } } return days; }, [currentWeekStart, viewMode]);
-            const changeWeek = (offset) => { const newDate = new Date(currentWeekStart); if (viewMode === 'day') newDate.setDate(newDate.getDate() + offset); else if (viewMode === 'week') newDate.setDate(newDate.getDate() + offset * 7); else if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + offset); setCurrentWeekStart(newDate); };
-            const formatDate = (date) => { const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; };
-            const getPredictionText = useCallback((remaining) => { if (remaining <= 0) return "已欠费"; const hoursToDeplete = remaining; const daysToDeplete = (hoursToDeplete / 8) * 30; const targetDate = new Date(); targetDate.setDate(targetDate.getDate() + daysToDeplete); const dateStr = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`; if (remaining <= 4) return `预计${dateStr}用尽 (剩余4课次警告)`; if (remaining <= 8) return `预计${dateStr}用尽 (剩余8课次提醒)`; return `预计${dateStr}用尽`; }, []);
-            
-            // CRUD 函数
-            const lcAdd = async (className, data, recurring = null) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { if (className === 'Course' && recurring && recurring.isRecurring) { const { recurringDays, repeatWeeks } = recurring; if (!recurringDays || recurringDays.length === 0 || repeatWeeks <= 0) { addToast("周期性排课配置不完整", "error"); return false; } const today = new Date(); const currentDayOfWeek = today.getDay(); const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; const startDate = new Date(today); startDate.setDate(today.getDate() - diffToMonday); const finalEndDate = new Date(startDate); finalEndDate.setDate(startDate.getDate() + (repeatWeeks * 7)); let totalCourses = 0; let currentDate = new Date(startDate); while (currentDate < finalEndDate) { const dayOfWeek = currentDate.getDay(); const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; if (recurringDays.includes(dayIndex)) { const Obj = AV.Object.extend(className); const obj = new Obj(); const courseDateStr = formatDate(currentDate); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); obj.set('dateStr', courseDateStr); obj.set('dayOfWeek', dayIndex); obj.set('studentIds', data.studentIds || []); await obj.save(); totalCourses++; } currentDate.setDate(currentDate.getDate() + 1); } if (totalCourses > 0) { addToast(`已成功批量创建 ${totalCourses} 节课程 (${repeatWeeks} 周)`, "success"); lcAdd('RecurringSchedule', { name: data.className, classGroupIds: data.classGroupIds, type: data.type, startTime: data.startTime, endTime: data.endTime, content: data.content, recurringDays, repeatWeeks }); } else { addToast("未创建任何课程，请检查重复日设置", "error"); } await fetchAll(); return true; } const Obj = AV.Object.extend(className); const obj = new Obj(); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); await obj.save(); await fetchAll(); return true; } catch (e) { addToast("保存失败: " + e.message, "error"); return false; } };
-            const lcUpdate = async (className, id, data, skipFetch = false) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { const obj = AV.Object.createWithoutData(className, id); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); await obj.save(); if (!skipFetch) { await fetchAll(); } return true; } catch (e) { addToast("更新失败: " + e.message, "error"); return false; } };
-            const lcDelete = async (className, id) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { const obj = AV.Object.createWithoutData(className, id); await obj.destroy(); await fetchAll(); return true; } catch (e) { addToast("删除失败: " + e.message, "error"); return false; } };
-            const exportToCSV = (filename, rows) => { try { const processRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","); const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(processRow).join("\n"); const link = document.createElement("a"); link.href = encodeURI(csvContent); link.download = filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); addToast("导出成功", "success"); } catch (e) { addToast("导出失败", "error"); } };
-            
-            // 数据拉取函数
-            const fetchAll = useCallback(async () => { if (typeof AV === 'undefined' || !window.isLCReady) return; setLoading(true); try { const fetchTableSafe = async (className) => { try { const q = new AV.Query(className); q.limit(1000); const results = await q.find(); return results.map(item => ({...item.attributes, id: item.id, createdAt: item.createdAt, updatedAt: item.updatedAt})); } catch (err) { if (err.code === 101) return []; console.warn(`Fetch ${className} failed:`, err); return []; } }; const s = await fetchTableSafe('Student'); const c = await fetchTableSafe('Course'); const g = await fetchTableSafe('ClassGroup'); const f = await fetchTableSafe('FollowUp'); const r = await fetchTableSafe('RecurringSchedule'); setStudents(s); setCourses(c); setClassGroups(g); setFollowUps(f); setRecurringSchedules(r); } catch (error) { console.error("Fetch error", error); } finally { setLoading(false); } }, [addToast]);
-            
-            const handleThemeChange = useCallback((t, event) => { let x = window.innerWidth / 2; let y = window.innerHeight / 2; if (event && event.clientX !== undefined && event.clientY !== undefined) { x = event.clientX; y = event.clientY; } else { const paletteButton = document.querySelector('.bottom-8.right-8 button'); if (paletteButton) { const rect = paletteButton.getBoundingClientRect(); x = rect.left + rect.width / 2; y = rect.top + rect.height / 2; } } const newPrimaryColorClass = `bg-${t.primary}-500`; setRippleEffect({ x, y, colorClass: newPrimaryColorClass, onEnd: () => { setTheme(t); localStorage.setItem('lms_theme_id', t.id); setIsThemeModalOpen(false); if (t.isDark) { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); } setRippleEffect(null); } }); }, []);
-            const ThemeTransitionRipple = React.memo(({ effect, duration }) => { if (!effect) return null; return ( <div className="theme-transition-layer" style={{ zIndex: 70 }} > <div className={`ripple-circle ${effect.colorClass} fixed`} style={{ left: `${effect.x}px`, top: `${effect.y}px`, animation: `ripple-expand ${duration}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`, }} onAnimationEnd={effect.onEnd} /> </div> ); });
-            const handleAttendanceModeChange = (m) => { setAttendanceMode(m); localStorage.setItem('lms_attendance_mode', m); };
-
-            // =================================================================
-            // [修复]：补回了初始化 useEffect，数据现在会自动加载了！
-            // =================================================================
-            useEffect(() => {
-                // 恢复主题
-                const lsTheme = localStorage.getItem('lms_theme_id');
-                if (lsTheme) {
-                    const savedTheme = THEMES.find(t => t.id === lsTheme) || theme;
-                    setTheme(savedTheme);
-                    if (savedTheme.isDark) document.documentElement.classList.add('dark');
-                    else document.documentElement.classList.remove('dark');
-                }
-                
-                // 初始化 LeanCloud 数据
-                setTimeout(() => {
-                    if(window.isLCReady) fetchAll();
-                }, 500);
-            }, [fetchAll]);
-
-            // 构建全局 Context
-            const contextValue = {
-                students, setStudents, courses, setCourses, followUps, setFollowUps, classGroups, setClassGroups, recurringSchedules, setRecurringSchedules, theme, setTheme, activeTab, setActiveTab, activeStudentId, setActiveStudentId, attendanceMode, handleAttendanceModeChange, loading, setLoading, currentWeekStart, setCurrentWeekStart, weekDays: calendarDays, changeWeek, calendarDays, formatDate, viewMode, setViewMode, teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, fetchAll, exportToCSV, lcAdd, lcUpdate, lcDelete, quotes, setQuotes, showTodayIncome, setShowTodayIncome, handleThemeChange, getPredictionText,
-                makeupTarget, setMakeupTarget 
-            };
-
-            return (
-                <AppDataContext.Provider value={contextValue}>
-                     <div className="flex h-screen bg-gray-100 dark:bg-slate-900 flex-col md:flex-row overflow-hidden font-sans transition-colors duration-300">
-                        <div className={`hidden md:flex w-64 glass-sidebar flex-col z-20`}>
-                            <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight"><div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}><LucideIcon name="Award" size={24}/></div><span className="text-slate-800 dark:text-white">Veape Studio</span></div>
-                            <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
-                                {['dashboard','schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>{setActiveTab(k); setActiveStudentId(null); setMakeupTarget(null);}} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm font-bold`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='dashboard'?'概览':k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}
-                                <div className="my-2 border-t border-gray-200/50 dark:border-white/10"></div>
-                                <button onClick={()=>{setActiveTab('settings'); setActiveStudentId(null); setMakeupTarget(null);}} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab==='settings'?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name="Settings" size={18}/> 系统设置</button>
-                            </nav>
-                            <div className="p-4 border-t border-gray-200/50 dark:border-white/10">{loading ? <div className="text-center text-xs text-slate-400 flex justify-center gap-2"><div className="spinner w-3 h-3 border-slate-300 border-t-blue-500"></div> 同步中...</div> : <div className="mt-3 text-[10px] text-center text-slate-400 font-mono flex justify-center items-center gap-1.5 cursor-pointer hover:text-green-500 transition-colors" onClick={fetchAll} title="点击刷新"><span className={`w-2 h-2 rounded-full bg-green-500`}></span> LeanCloud 在线 <LucideIcon name="RefreshCw" size={10} /></div>}</div>
-                        </div>
-                        <div className="flex-1 flex flex-col overflow-hidden relative bg-white/50 dark:bg-slate-900/50">
-                            <div className="absolute top-2 right-2 z-10 flex gap-2 md:hidden"><button onClick={(e)=> {e.stopPropagation(); setIsThemeModalOpen(true);}} className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-md border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300"><LucideIcon name="Palette" size={18}/></button></div>
-                            <div className="hidden md:block fixed bottom-8 right-8 z-50"><button onClick={(e)=> {e.stopPropagation(); setIsThemeModalOpen(true);}} className="glass-panel p-3 rounded-full hover:scale-110 transition-transform flex items-center gap-2 text-slate-600 dark:text-slate-300 hover-jelly"><LucideIcon name="Palette" size={20}/><span className="font-medium text-sm">主题风格</span></button></div>
-                            <div className="flex-1 overflow-auto scroll-smooth">
-                                <div className="max-w-7xl mx-auto w-full h-full">
-                                    {activeStudentId ? (<StudentDetailPage studentId={activeStudentId} onBack={() => setActiveStudentId(null)} />) : (
-                                        <>
-                                            {activeTab==='dashboard' && <Dashboard />}
-                                            {activeTab==='schedule' && <CourseSchedule />}
-                                            {activeTab==='groups' && <ClassGroupManager />}
-                                            {activeTab==='students' && <StudentManager />}
-                                            {activeTab==='followup' && <FollowUpManager />}
-                                            {activeTab==='attendance' && <AttendanceManager />}
-                                            {activeTab==='settings' && <SettingsManager />}
-                                        </>
-                                    )}
+        // --- 主程序入口 (修复版：已找回数据加载逻辑) ---
+                function SchoolSystem() {
+                    const addToast = useToast(); 
+                    const [activeTab, setActiveTab] = useState('dashboard'); 
+                    const [activeStudentId, setActiveStudentId] = useState(null); 
+                    
+                    // 补课目标数据
+                    const [makeupTarget, setMakeupTarget] = useState(null); 
+        
+                    // 状态定义
+                    const [theme, setTheme] = useState(() => { const lsThemeId = localStorage.getItem('lms_theme_id'); const defaultTheme = THEMES[0]; return lsThemeId ? (THEMES.find(t => t.id === lsThemeId) || defaultTheme) : defaultTheme; });
+                    const [rippleEffect, setRippleEffect] = useState(null);
+                    // 修正：从 localStorage 加载职级，使用默认值 '初级 2 级'
+                    const [teacherLevel, setTeacherLevel] = useState(localStorage.getItem('lms_teacher_level') || '初级 2 级');
+                    const [classFeeBase, setClassFeeBase] = useState(Number(localStorage.getItem('lms_class_fee_base')) || 8);
+                    const [showTodayIncome, setShowTodayIncome] = useState(() => { const saved = localStorage.getItem('lms_show_today_income'); return saved !== null ? JSON.parse(saved) : true; });
+                    const [quotes, setQuotes] = useState(() => { try { const saved = JSON.parse(localStorage.getItem('lms_quotes')); return (saved && saved.length > 0) ? saved : DEFAULT_QUOTES; } catch(e) { return DEFAULT_QUOTES; } });
+                    const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+                    const [attendanceMode, setAttendanceMode] = useState(localStorage.getItem('lms_attendance_mode') || 'scheduled');
+                    const [loading, setLoading] = useState(false);
+                    
+                    // 核心数据状态
+                    const [students, setStudents] = useState([]);
+                    const [courses, setCourses] = useState([]);
+                    const [followUps, setFollowUps] = useState([]);
+                    const [classGroups, setClassGroups] = useState([]);
+                    const [recurringSchedules, setRecurringSchedules] = useState([]);
+                    
+                    const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
+                    const [viewMode, setViewMode] = useState('week'); 
+        
+                    // 辅助函数
+                    const calendarDays = useMemo(() => { const days = []; let start = new Date(currentWeekStart); if (viewMode === 'day') { days.push(new Date(start)); } else if (viewMode === 'week') { const day = start.getDay(); const diff = start.getDate() - day + (day === 0 ? -6 : 1); start.setDate(diff); for(let i=0; i<7; i++){ days.push(new Date(start)); start.setDate(start.getDate()+1); } } else if (viewMode === 'month') { start.setDate(1); const dayOfWeek = start.getDay(); const offset = (dayOfWeek + 6) % 7; start.setDate(start.getDate() - offset); for(let i=0; i<42; i++) { days.push(new Date(start)); start.setDate(start.getDate()+1); } } return days; }, [currentWeekStart, viewMode]);
+                    const changeWeek = (offset) => { const newDate = new Date(currentWeekStart); if (viewMode === 'day') newDate.setDate(newDate.getDate() + offset); else if (viewMode === 'week') newDate.setDate(newDate.getDate() + offset * 7); else if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + offset); setCurrentWeekStart(newDate); };
+                    const formatDate = (date) => { const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; };
+                    const getPredictionText = useCallback((remaining) => { if (remaining <= 0) return "已欠费"; const hoursToDeplete = remaining; const daysToDeplete = (hoursToDeplete / 8) * 30; const targetDate = new Date(); targetDate.setDate(targetDate.getDate() + daysToDeplete); const dateStr = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`; if (remaining <= 4) return `预计${dateStr}用尽 (剩余4课次警告)`; if (remaining <= 8) return `预计${dateStr}用尽 (剩余8课次提醒)`; return `预计${dateStr}用尽`; }, []);
+                    
+                    // CRUD 函数
+                    const lcAdd = async (className, data, recurring = null) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { if (className === 'Course' && recurring && recurring.isRecurring) { const { recurringDays, repeatWeeks } = recurring; if (!recurringDays || recurringDays.length === 0 || repeatWeeks <= 0) { addToast("周期性排课配置不完整", "error"); return false; } const today = new Date(); const currentDayOfWeek = today.getDay(); const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; const startDate = new Date(today); startDate.setDate(today.getDate() - diffToMonday); const finalEndDate = new Date(startDate); finalEndDate.setDate(startDate.getDate() + (repeatWeeks * 7)); let totalCourses = 0; let currentDate = new Date(startDate); while (currentDate < finalEndDate) { const dayOfWeek = currentDate.getDay(); const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; if (recurringDays.includes(dayIndex)) { const Obj = AV.Object.extend(className); const obj = new Obj(); const courseDateStr = formatDate(currentDate); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); obj.set('dateStr', courseDateStr); obj.set('dayOfWeek', dayIndex); obj.set('studentIds', data.studentIds || []); await obj.save(); totalCourses++; } currentDate.setDate(currentDate.getDate() + 1); } if (totalCourses > 0) { addToast(`已成功批量创建 ${totalCourses} 节课程 (${repeatWeeks} 周)`, "success"); lcAdd('RecurringSchedule', { name: data.className, classGroupIds: data.classGroupIds, type: data.type, startTime: data.startTime, endTime: data.endTime, content: data.content, recurringDays, repeatWeeks }); } else { addToast("未创建任何课程，请检查重复日设置", "error"); } await fetchAll(); return true; } const Obj = AV.Object.extend(className); const obj = new Obj(); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); await obj.save(); await fetchAll(); return true; } catch (e) { addToast("保存失败: " + e.message, "error"); return false; } };
+                    const lcUpdate = async (className, id, data, skipFetch = false) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { const obj = AV.Object.createWithoutData(className, id); Object.keys(data).forEach(k => { if (['id', 'objectId', 'createdAt', 'updatedAt'].includes(k)) return; obj.set(k, data[k]); }); await obj.save(); if (!skipFetch) { await fetchAll(); } return true; } catch (e) { addToast("更新失败: " + e.message, "error"); return false; } };
+                    const lcDelete = async (className, id) => { if (typeof AV === 'undefined' || !window.isLCReady) { addToast("云端服务未连接，请刷新重试", "error"); return false; } try { const obj = AV.Object.createWithoutData(className, id); await obj.destroy(); await fetchAll(); return true; } catch (e) { addToast("删除失败: " + e.message, "error"); return false; } };
+                    const exportToCSV = (filename, rows) => { try { const processRow = (row) => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","); const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(processRow).join("\n"); const link = document.createElement("a"); link.href = encodeURI(csvContent); link.download = filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); addToast("导出成功", "success"); } catch (e) { addToast("导出失败", "error"); } };
+                    
+                    // 数据拉取函数
+                    const fetchAll = useCallback(async () => { if (typeof AV === 'undefined' || !window.isLCReady) return; setLoading(true); try { const fetchTableSafe = async (className) => { try { const q = new AV.Query(className); q.limit(1000); const results = await q.find(); return results.map(item => ({...item.attributes, id: item.id, createdAt: item.createdAt, updatedAt: item.updatedAt})); } catch (err) { if (err.code === 101) return []; console.warn(`Fetch ${className} failed:`, err); return []; } }; const s = await fetchTableSafe('Student'); const c = await fetchTableSafe('Course'); const g = await fetchTableSafe('ClassGroup'); const f = await fetchTableSafe('FollowUp'); const r = await fetchTableSafe('RecurringSchedule'); setStudents(s); setCourses(c); setClassGroups(g); setFollowUps(f); setRecurringSchedules(r); } catch (error) { console.error("Fetch error", error); } finally { setLoading(false); } }, [addToast]);
+                    
+                    const handleThemeChange = useCallback((t, event) => { let x = window.innerWidth / 2; let y = window.innerHeight / 2; if (event && event.clientX !== undefined && event.clientY !== undefined) { x = event.clientX; y = event.clientY; } else { const paletteButton = document.querySelector('.bottom-8.right-8 button'); if (paletteButton) { const rect = paletteButton.getBoundingClientRect(); x = rect.left + rect.width / 2; y = rect.top + rect.height / 2; } } const newPrimaryColorClass = `bg-${t.primary}-500`; setRippleEffect({ x, y, colorClass: newPrimaryColorClass, onEnd: () => { setTheme(t); localStorage.setItem('lms_theme_id', t.id); setIsThemeModalOpen(false); if (t.isDark) { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); } setRippleEffect(null); } }); }, []);
+                    const ThemeTransitionRipple = React.memo(({ effect, duration }) => { if (!effect) return null; return ( <div className="theme-transition-layer" style={{ zIndex: 70 }} > <div className={`ripple-circle ${effect.colorClass} fixed`} style={{ left: `${effect.x}px`, top: `${effect.y}px`, animation: `ripple-expand ${duration}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`, }} onAnimationEnd={effect.onEnd} /> </div> ); });
+                    const handleAttendanceModeChange = (m) => { setAttendanceMode(m); localStorage.setItem('lms_attendance_mode', m); };
+        
+                    // =================================================================
+                    // [修复]：补回了初始化 useEffect，数据现在会自动加载了！
+                    // =================================================================
+                    useEffect(() => {
+                        // 恢复主题
+                        const lsTheme = localStorage.getItem('lms_theme_id');
+                        if (lsTheme) {
+                            const savedTheme = THEMES.find(t => t.id === lsTheme) || theme;
+                            setTheme(savedTheme);
+                            if (savedTheme.isDark) document.documentElement.classList.add('dark');
+                            else document.documentElement.classList.remove('dark');
+                        }
+                        
+                        // 初始化 LeanCloud 数据
+                        setTimeout(() => {
+                            if(window.isLCReady) fetchAll();
+                        }, 500);
+                    }, [fetchAll]);
+        
+                    // 构建全局 Context
+                    const contextValue = {
+                        students, setStudents, courses, setCourses, followUps, setFollowUps, classGroups, setClassGroups, recurringSchedules, setRecurringSchedules, theme, setTheme, activeTab, setActiveTab, activeStudentId, setActiveStudentId, attendanceMode, handleAttendanceModeChange, loading, setLoading, currentWeekStart, setCurrentWeekStart, weekDays: calendarDays, changeWeek, calendarDays, formatDate, viewMode, setViewMode, teacherLevel, setTeacherLevel, classFeeBase, setClassFeeBase, fetchAll, exportToCSV, lcAdd, lcUpdate, lcDelete, quotes, setQuotes, showTodayIncome, setShowTodayIncome, handleThemeChange, getPredictionText,
+                        makeupTarget, setMakeupTarget 
+                    };
+        
+                    return (
+                        <AppDataContext.Provider value={contextValue}>
+                             <div className="flex h-screen bg-gray-100 dark:bg-slate-900 flex-col md:flex-row overflow-hidden font-sans transition-colors duration-300">
+                                <div className={`hidden md:flex w-64 glass-sidebar flex-col z-20`}>
+                                    <div className="p-6 text-2xl font-bold border-b border-gray-200/50 dark:border-white/10 flex items-center gap-3 tracking-tight"><div className={`w-10 h-10 rounded-xl bg-${theme.primary}-500 flex items-center justify-center shadow-lg text-white`}><LucideIcon name="Award" size={24}/></div><span className="text-slate-800 dark:text-white">Veape Studio</span></div>
+                                    <nav className="flex-1 py-6 space-y-1 overflow-y-auto px-3">
+                                        {['dashboard','schedule','groups','students','followup','attendance'].map(k=><button key={k} onClick={()=>{setActiveTab(k); setActiveStudentId(null); setMakeupTarget(null);}} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab===k?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm font-bold`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='followup'?'PhoneCall':'CheckSquare'} size={18} /> {k==='dashboard'?'概览':k==='schedule'?'课程管理':k==='groups'?'班级管理':k==='students'?'学员管理':k==='followup'?'回访管理':'考勤管理'}</button>)}
+                                        <div className="my-2 border-t border-gray-200/50 dark:border-white/10"></div>
+                                        <button onClick={()=>{setActiveTab('settings'); setActiveStudentId(null); setMakeupTarget(null);}} className={`w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-200 ${activeTab==='settings'?`bg-${theme.primary}-50 dark:bg-slate-700 text-${theme.primary}-600 dark:text-white shadow-sm`:'text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'}`}><LucideIcon name="Settings" size={18}/> 系统设置</button>
+                                    </nav>
+                                    <div className="p-4 border-t border-gray-200/50 dark:border-white/10">{loading ? <div className="text-center text-xs text-slate-400 flex justify-center gap-2"><div className="spinner w-3 h-3 border-slate-300 border-t-blue-500"></div> 同步中...</div> : <div className="mt-3 text-[10px] text-center text-slate-400 font-mono flex justify-center items-center gap-1.5 cursor-pointer hover:text-green-500 transition-colors" onClick={fetchAll} title="点击刷新"><span className={`w-2 h-2 rounded-full bg-green-500`}></span> LeanCloud 在线 <LucideIcon name="RefreshCw" size={10} /></div>}</div>
                                 </div>
+                                <div className="flex-1 flex flex-col overflow-hidden relative bg-white/50 dark:bg-slate-900/50">
+                                    <div className="absolute top-2 right-2 z-10 flex gap-2 md:hidden"><button onClick={(e)=> {e.stopPropagation(); setIsThemeModalOpen(true);}} className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-md border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300"><LucideIcon name="Palette" size={18}/></button></div>
+                                    <div className="hidden md:block fixed bottom-8 right-8 z-50"><button onClick={(e)=> {e.stopPropagation(); setIsThemeModalOpen(true);}} className="glass-panel p-3 rounded-full hover:scale-110 transition-transform flex items-center gap-2 text-slate-600 dark:text-slate-300 hover-jelly"><LucideIcon name="Palette" size={20}/><span className="font-medium text-sm">主题风格</span></button></div>
+                                    <div className="flex-1 overflow-auto scroll-smooth">
+                                        <div className="max-w-7xl mx-auto w-full h-full">
+                                            {activeStudentId ? (<StudentDetailPage studentId={activeStudentId} onBack={() => setActiveStudentId(null)} />) : (
+                                                <>
+                                                    {activeTab==='dashboard' && <Dashboard />}
+                                                    {activeTab==='schedule' && <CourseSchedule />}
+                                                    {activeTab==='groups' && <ClassGroupManager />}
+                                                    {activeTab==='students' && <StudentManager />}
+                                                    {activeTab==='followup' && <FollowUpManager />}
+                                                    {activeTab==='attendance' && <AttendanceManager />}
+                                                    {activeTab==='settings' && <SettingsManager />}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={`md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-gray-200 dark:border-slate-800 flex justify-around p-2 pb-safe z-50 shadow-lg overflow-x-auto`}>
+                                    {['dashboard','schedule','groups','students','attendance','followup','settings'].map(k => (
+                                        <button key={k} onClick={()=>{setActiveTab(k); setActiveStudentId(null); setMakeupTarget(null);}} className={`flex flex-col items-center p-2 rounded-xl min-w-[3.5rem] transition-all duration-300 ${activeTab===k?`text-${theme.primary}-600 dark:text-blue-400 bg-${theme.primary}-50 dark:bg-slate-800 scale-105`:'text-gray-400 dark:text-slate-500'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='attendance'?'CheckSquare':k==='followup'?'PhoneCall':'Settings'} size={20}/><span className="text-[10px] mt-1 font-medium scale-90">{k==='dashboard'?'概览':k==='schedule'?'排课':k==='groups'?'班级':k==='students'?'学员':k==='attendance'?'考勤':k==='followup'?'回访':'设置'}</span></button>
+                                    ))}
+                                </div>
+                                <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题风格"><div className="grid grid-cols-2 gap-3">{THEMES.map(t=>(<button key={t.id} onClick={(e) => handleThemeChange(t, e)} className={`p-3 border rounded-xl flex gap-3 items-center text-sm font-medium transition-all ${theme.id===t.id?`bg-${t.primary}-50/80 dark:bg-slate-700 border-${t.primary}-500/80 text-${t.primary}-700 dark:text-white ring-2 ring-${t.primary}-200 dark:ring-slate-600 shadow-md`:'hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:border-gray-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}><div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white dark:ring-slate-800`}></div>{t.name}</button>))}</div></Modal>
+                                <ThemeTransitionRipple effect={rippleEffect} duration={600} />
                             </div>
-                        </div>
-                        <div className={`md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-gray-200 dark:border-slate-800 flex justify-around p-2 pb-safe z-50 shadow-lg overflow-x-auto`}>
-                            {['dashboard','schedule','groups','students','attendance','followup','settings'].map(k => (
-                                <button key={k} onClick={()=>{setActiveTab(k); setActiveStudentId(null); setMakeupTarget(null);}} className={`flex flex-col items-center p-2 rounded-xl min-w-[3.5rem] transition-all duration-300 ${activeTab===k?`text-${theme.primary}-600 dark:text-blue-400 bg-${theme.primary}-50 dark:bg-slate-800 scale-105`:'text-gray-400 dark:text-slate-500'}`}><LucideIcon name={k==='dashboard'?'Home':k==='schedule'?'Calendar':k==='groups'?'Layers':k==='students'?'Users':k==='attendance'?'CheckSquare':k==='followup'?'PhoneCall':'Settings'} size={20}/><span className="text-[10px] mt-1 font-medium scale-90">{k==='dashboard'?'概览':k==='schedule'?'排课':k==='groups'?'班级':k==='students'?'学员':k==='attendance'?'考勤':k==='followup'?'回访':'设置'}</span></button>
-                            ))}
-                        </div>
-                        <Modal isOpen={isThemeModalOpen} onClose={()=>setIsThemeModalOpen(false)} title="主题风格"><div className="grid grid-cols-2 gap-3">{THEMES.map(t=>(<button key={t.id} onClick={(e) => handleThemeChange(t, e)} className={`p-3 border rounded-xl flex gap-3 items-center text-sm font-medium transition-all ${theme.id===t.id?`bg-${t.primary}-50/80 dark:bg-slate-700 border-${t.primary}-500/80 text-${t.primary}-700 dark:text-white ring-2 ring-${t.primary}-200 dark:ring-slate-600 shadow-md`:'hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:border-gray-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}><div className={`w-6 h-6 rounded-full bg-${t.primary}-500 shadow-sm ring-2 ring-white dark:ring-slate-800`}></div>{t.name}</button>))}</div></Modal>
-                        <ThemeTransitionRipple effect={rippleEffect} duration={600} />
-                    </div>
-                </AppDataContext.Provider>
-            );
-        }
+                        </AppDataContext.Provider>
+                    );
+                }
         const App = () => { return <ToastProvider><SchoolSystem /></ToastProvider>; };
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
