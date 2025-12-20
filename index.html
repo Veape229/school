@@ -687,20 +687,37 @@
         };
 
         // 回访历史 Tab
-        const FollowUpTab = ({ data, theme }) => (
-            <div className="space-y-4">
-                {data.length > 0 ? data.map((f) => (
-                    <div key={f.monthStr} className="p-4 rounded-xl bg-white dark:bg-slate-700 border border-gray-100 dark:border-slate-600 shadow-sm flex items-center justify-between">
-                        <div className="text-sm font-bold text-slate-800 dark:text-white">{f.monthStr.slice(0, 4)}年 {f.monthStr.slice(5)}月</div>
-                        <div className={`px-3 py-1 text-xs font-bold rounded-full ${f.count === 2 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : f.count === 1 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>
-                            完成次数: {f.count} / 2
+        const FollowUpTab = ({ data, theme }) => {
+            // 聚合处理：将同一个月的多次记录合并显示
+            const processedData = React.useMemo(() => {
+                const groups = data.reduce((acc, curr) => {
+                    const m = curr.monthStr;
+                    if (!acc[m]) acc[m] = { ...curr, count: 0 };
+                    acc[m].count += (Number(curr.count) || 0);
+                    return acc;
+                }, {});
+                return Object.values(groups).sort((a, b) => b.monthStr.localeCompare(a.monthStr));
+            }, [data]);
+        
+            return (
+                <div className="space-y-4">
+                    {processedData.length > 0 ? processedData.map((f) => (
+                        <div key={f.monthStr} className="p-4 rounded-xl bg-white dark:bg-slate-700 border border-gray-100 dark:border-slate-600 shadow-sm flex items-center justify-between">
+                            <div className="text-sm font-bold text-slate-800 dark:text-white">
+                                {f.monthStr.slice(0, 4)}年 {f.monthStr.slice(5)}月
+                            </div>
+                            <div className={`px-3 py-1 text-xs font-bold rounded-full ${
+                                f.count >= 2 ? 'bg-emerald-100 text-emerald-600' : 'bg-yellow-100 text-yellow-600'
+                            }`}>
+                                完成次数: {f.count} / 2
+                            </div>
                         </div>
-                    </div>
-                )) : (
-                    <div className="text-center py-10 text-slate-400 dark:text-slate-500">该学员暂无回访记录。</div>
-                )}
-            </div>
-        );
+                    )) : (
+                        <div className="text-center py-10 text-slate-400">暂无有效记录</div>
+                    )}
+                </div>
+            );
+        };
 
         // 课时交易记录 Tab
         const FinanceTab = ({ data, theme, remainingHours }) => (
@@ -743,6 +760,39 @@
             const [activeTab, setActiveTab] = useState('history'); 
             const [isEditOpen, setIsEditOpen] = useState(false);
             const [editStudent, setEditStudent] = useState({});
+			const handleFollowUp = async (studentId) => {
+			    try {
+			        setLoading(true);
+			        const currentMonth = new Date().toISOString().slice(0, 7); // 格式 YYYY-MM
+			        
+			        // 1. 先检查本地数据中是否已存在该学员当月的记录
+			        const existing = followUps.find(f => f.studentId === studentId && f.monthStr === currentMonth);
+			        
+			        if (existing) {
+			            // 如果已存在，在原有 count 上加 1
+			            const todo = AV.Object.createWithoutData('FollowUp', existing.id);
+			            todo.set('count', (parseInt(existing.count, 10) || 0) + 1);
+			            await todo.save();
+			        } else {
+			            // 如果不存在，新建记录
+			            const FollowUp = AV.Object.extend('FollowUp');
+			            const fu = new FollowUp();
+			            fu.set('studentId', studentId);
+			            fu.set('monthStr', currentMonth);
+			            fu.set('count', 1);
+			            await fu.save();
+			        }
+			        
+			        // 2. 强制全量刷新，确保状态同步
+			        await fetchAll(); 
+			        showToast('回访记录更新成功', 'success');
+			    } catch (error) {
+			        console.error('FollowUp Error:', error);
+			        showToast('记录失败，请检查网络', 'error');
+			    } finally {
+			        setLoading(false);
+			    }
+			};
 
             useEffect(() => {
                 if(student) {
@@ -767,9 +817,20 @@
                     .sort((a, b) => b.dateStr.localeCompare(a.dateStr)); // 最近的在前
 
                 // 2. 回访历史
-                const fuHistory = followUps
-                    .filter(f => f.studentId === studentId)
-                    .sort((a, b) => b.monthStr.localeCompare(a.monthStr));
+               // --- 修改开始 ---
+               const fuHistory = useMemo(() => {
+                   // 过滤出该学员的记录
+                   const raw = followUps.filter(f => f.studentId === studentId);
+                   // 按月合并（防止数据库有重复行导致次数虚高）
+                   const grouped = raw.reduce((acc, curr) => {
+                       const m = curr.monthStr;
+                       if(!acc[m]) acc[m] = { ...curr, count: 0 };
+                       acc[m].count += (Number(curr.count) || 0);
+                       return acc;
+                   }, {});
+                   return Object.values(grouped).sort((a, b) => b.monthStr.localeCompare(a.monthStr));
+               }, [followUps, studentId]);
+               // --- 修改结束 ---
 
                 // 3. 课时变动记录 (Transaction/Finance Log) - Placeholder/Simulation
                 const hoursLog = [];
@@ -961,7 +1022,6 @@
                     
                                 // 使用静态日期字符串，防止 formatDate 未定义导致页面崩溃
                                 const UPDATE_HISTORY = [
-                                            				
                                             				    { 
                                             				        version: "V1.2.3", 
                                             				        date: "2025-12-12", 
